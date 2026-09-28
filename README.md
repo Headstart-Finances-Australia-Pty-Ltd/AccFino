@@ -1,5 +1,11 @@
 # AccFino — Intelligent Accounting for Australian Business
 
+> **Structure:** `backend/` (FastAPI), `frontend/` (React), `deploy/`, `scripts/`, `docs/` - see `docs/ARCHITECTURE.md`.
+> **Phase 0** adds server-side authentication, multi-factor sign-in (face/fingerprint passkeys, authenticator app,
+> SMS, email), organisations, a double-entry ledger and an Australian chart of accounts - see `docs/phase0/`.
+> **Run locally (Windows):** double-click `app.cmd` (first run creates `.env` for you to fill in); `stop.bat` stops it.
+> **Run with Docker:** `docker compose up --build`. Tests live in the separate `AccFino_Testing` folder.
+
 Full-stack SaaS accounting platform: FastAPI backend + React/Vite frontend, served from a single Docker container.
 
 ## Stack
@@ -40,7 +46,7 @@ npm run dev
 # → http://localhost:3000 (proxies /api → :8001 via vite.config.js)
 ```
 
-Leave `DATABASE_URL` unset locally — the app falls back to SQLite automatically.
+`DATABASE_URL` must point to PostgreSQL (the ledger's integrity triggers require it); the SQLite fallback mentioned in earlier versions is not implemented in `db_app/database.py`.
 
 ## Northflank deployment
 
@@ -48,7 +54,8 @@ Leave `DATABASE_URL` unset locally — the app falls back to SQLite automaticall
 
 ```
 DATABASE_URL       postgresql+psycopg2://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require
-JWT_SECRET         your-long-random-secret
+JWT_SECRET         your-long-random-secret   (required from Phase 0)
+ADMIN_PASSWORD     used only when the admin account is first created
 STRIPE_SECRET_KEY  sk_live_xxx
 RESEND_API_KEY     re_xxx
 FROM_EMAIL         noreply@accfino.com
