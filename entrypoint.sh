@@ -34,21 +34,10 @@ if [ $? -ne 0 ]; then
 fi
 echo "[accfino] Database ready"
 
-# ── Start internal auth API on 127.0.0.1:8000 (background) ───────────────────
-echo "[accfino] Starting auth API on 127.0.0.1:8000..."
-python -m uvicorn main_app.api_call:app \
-    --host 127.0.0.1 \
-    --port 8000 \
-    --log-level warning &
-
-AUTH_PID=$!
-sleep 3
-
-if ! kill -0 $AUTH_PID 2>/dev/null; then
-    echo "[accfino] ERROR: Auth API failed to start"
-    exit 1
-fi
-echo "[accfino] Auth API ready (PID $AUTH_PID)"
+# ── Internal auth API: removed ───────────────────────────────────────────────
+# `main_app.api_call` no longer exists at that path (the file now sits in main_app/data/), and the main
+# app already serves every /auth route itself (react_api includes the auth router). Starting the separate
+# background service on 127.0.0.1:8000 made this script exit before the app came up. Nothing else uses port 8000.
 
 # ── Start main API on $PORT (foreground) ─────────────────────────────────────
 # Northflank injects $PORT — fall back to 8001 if not set
