@@ -3,6 +3,9 @@ import { useAuth } from '../../hooks/useAuth.jsx'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, Check, RefreshCw, Play, Users, DollarSign, Calendar, FileText } from 'lucide-react'
 import axios from 'axios'
+import ComingSoonTab from '../../components/layout/ComingSoonTab.jsx'
+import { useModuleVisibility } from '../../hooks/useModuleVisibility.jsx'
+import { tabsForDomain } from '../../lib/modules.js'
 
 const http = axios.create({ baseURL: '/api', withCredentials: true })
 http.interceptors.request.use(cfg => {
@@ -46,13 +49,32 @@ const EMPTY_EMP = {
   address_line1:'', address_suburb:'', address_state:'NSW', address_postcode:'',
 }
 
+const ALL_TABS = [
+  { key:'dashboard',      label:'📊 Dashboard'  },
+  { key:'employees',      label:'👥 Employees'  },
+  { key:'timesheets',     label:'⏱ Timesheets'  },
+  { key:'runs',           label:'💸 Pay Runs'   },
+  { key:'leave',          label:'🏖 Leave'      },
+  { key:'super',          label:'💰 Super'      },
+  { key:'payg',           label:'📉 PAYG'       },
+  { key:'payslips',       label:'📄 Payslips'   },
+  { key:'compliance',     label:'🏛 STP'        },
+]
+
 export default function PayrollPage() {
   const { user } = useAuth()
   const userId   = user?.id
+  const { isModuleVisible } = useModuleVisibility()
+  const TABS = tabsForDomain('payroll_workforce', ALL_TABS, isModuleVisible)
 
   const [tab,     setTab]     = useState('dashboard')
   const [stats,   setStats]   = useState(null)
   const [loading, setLoading] = useState(false)
+
+  // If an admin hides the module currently open (Admin > Modules), fall back to the first visible tab
+  useEffect(() => {
+    if (TABS.length && !TABS.some(t => t.key === tab)) setTab(TABS[0].key)
+  }, [TABS.map(t => t.key).join(',')])
 
   const load = async () => {
     if (!userId) return
@@ -66,21 +88,15 @@ export default function PayrollPage() {
 
   useEffect(() => { load() }, [userId])
 
-  const TABS = [
-    { key:'dashboard',   label:'📊 Dashboard'   },
-    { key:'employees',   label:'👥 Employees'   },
-    { key:'timesheets',  label:'⏱ Timesheets'   },
-    { key:'runs',        label:'💸 Payroll Runs' },
-    { key:'payslips',    label:'📄 Payslips'    },
-    { key:'compliance',  label:'🏛 STP / ATO'   },
-  ]
-
   return (
     <div className="fade-in">
       <div style={{marginBottom:20,display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <h1>👔 Payroll</h1>
-          <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
+          <div className="flex items-center gap-1">
+            <Users size={22} />
+            <h2 style={{margin:0}}>Payroll</h2>
+          </div>
+          <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
             Australian payroll · PAYG · Super · STP Phase 2
           </p>
         </div>
@@ -89,7 +105,7 @@ export default function PayrollPage() {
         </button>
       </div>
 
-      <div className="tabs-bar" style={{marginBottom:0}}>
+      <div className="tabs-bar" style={{marginBottom:0, flexWrap:'nowrap', overflowX:'auto'}}>
         {TABS.map(t => (
           <button key={t.key}
             className={`tab-btn${tab===t.key?' active':''}`}
@@ -103,12 +119,15 @@ export default function PayrollPage() {
         borderTop:'none',borderRadius:'0 0 var(--r-lg) var(--r-lg)',
         minHeight:400,overflow:'hidden',boxShadow:'var(--sh-sm)'}}>
 
-        {tab==='dashboard'  && <PayrollDashboard stats={stats} userId={userId} onNav={setTab}/>}
-        {tab==='employees'  && <EmployeesTab userId={userId}/>}
-        {tab==='timesheets' && <TimesheetsTab userId={userId}/>}
-        {tab==='runs'       && <RunsTab userId={userId} onDone={load}/>}
-        {tab==='payslips'   && <PayslipsTab/>}
-        {tab==='compliance' && <ComplianceTab userId={userId}/>}
+        {tab==='dashboard'   && <PayrollDashboard stats={stats} userId={userId} onNav={setTab}/>}
+        {tab==='employees'   && <EmployeesTab userId={userId}/>}
+        {tab==='timesheets'  && <TimesheetsTab userId={userId}/>}
+        {tab==='runs'        && <RunsTab userId={userId} onDone={load}/>}
+        {tab==='leave'       && <ComingSoonTab emoji="🏖" name="Leave & Entitlements" phase="Phase 2" blurb="Leave balances, accruals and entitlements."/>}
+        {tab==='super'       && <ComingSoonTab emoji="💰" name="Superannuation" phase="Phase 2" blurb="Superannuation guarantee calculations and Payday Super."/>}
+        {tab==='payg'        && <ComingSoonTab emoji="📉" name="PAYG Withholding" phase="Phase 2" blurb="PAYG withholding calculations and schedules."/>}
+        {tab==='payslips'    && <PayslipsTab/>}
+        {tab==='compliance'  && <ComplianceTab userId={userId}/>}
       </div>
     </div>
   )
@@ -665,7 +684,7 @@ function PayslipsTab() {
             <div style={{height:8}}/>
             <Row l="Net Pay"        v={fmtAUD(selected.net_pay)} hi="var(--success)"/>
             <div style={{height:8}}/>
-            <Row l="Super (11%)"    v={fmtAUD(selected.super_guarantee)} hi="var(--brand)"/>
+            <Row l="Super (12%)"    v={fmtAUD(selected.super_guarantee)} hi="var(--brand)"/>
             <Row l="Super Fund"     v={selected.super_fund_name||'—'}/>
             <div style={{height:8}}/>
             <Row l="YTD Gross"      v={fmtAUD(selected.ytd_gross)}/>

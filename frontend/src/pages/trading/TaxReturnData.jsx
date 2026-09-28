@@ -13,7 +13,7 @@
  * Links with AccFino's reconciliation DB (future: auto-populate from classified txns)
  */
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronRight, Download, Info } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronRight, Download, Info, FolderArchive } from 'lucide-react'
 import axios from 'axios'
 
 const http = axios.create({ baseURL: '/api', withCredentials: true })
@@ -190,9 +190,12 @@ export default function TaxReturnData() {
 
   return (
     <div style={{padding:24}}>
-      <div style={{marginBottom:22}}>
-        <h1>🗂 Tax Return Data</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <FolderArchive size={22} />
+          <h2 style={{margin:0}}>Tax Return Data</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Australian Individual Tax Return (ITR) · All income, deductions, offsets · ATO-compliant estimates
         </p>
       </div>

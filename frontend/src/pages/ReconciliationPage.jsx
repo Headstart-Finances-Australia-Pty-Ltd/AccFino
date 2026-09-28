@@ -7,6 +7,7 @@ import OpenBankingInput from '../components/reconciliation/OpenBankingInput.jsx'
 import OutputPanel      from '../components/reconciliation/OutputPanel.jsx'
 import { processFiles, processFilesWithSession, getSession, getBanks } from '../lib/api.js'
 import { ReconciliationContext } from '../components/layout/Layout.jsx'
+import { Landmark } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function ReconciliationPage() {
@@ -208,9 +209,12 @@ export default function ReconciliationPage() {
 
   return (
     <div className="fade-in">
-      <div style={{marginBottom:20}}>
-        <h1>🏦 Bank Reconciliation</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <Landmark size={22} />
+          <h2 style={{margin:0}}>Bank Reconciliation</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Upload statements or pull from Open Banking · detect transfers · classify GL &amp; GST · export Excel
         </p>
       </div>

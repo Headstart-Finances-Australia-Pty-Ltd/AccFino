@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { licenceList, licenceSave, licenceDeleteUser, licenceUpdateUser, register } from '../lib/api'
-import { Edit2, Trash2, Check, X, Plus, RefreshCw, Save } from 'lucide-react'
+import { licenceList, licenceSave, licenceDeleteUser, licenceUpdateUser, register, changePassword } from '../lib/api'
+import { Edit2, Trash2, Check, X, Plus, RefreshCw, Save, BadgeCheck, UserCog, KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuth } from '../hooks/useAuth.jsx'
+import IdentityPage from './settings/IdentityPage.jsx'
 
 const LICENCE_TYPES  = ['demo', 'trial', 'paid', 'suspended']
 
@@ -12,8 +14,8 @@ const ALL_MODULES = [
   { key: 'cash-flow',      label: '📉 Cash Flow' },
   { key: 'invoice',        label: '🧾 Invoice' },
   { key: 'admin',          label: '🛡 Admin & ML' },
-  { key: 'file-manager',   label: '📁 File Manager' },
-  { key: 'licence',        label: '🏷 Licence' },
+  { key: 'file-manager',   label: '📁 Data Manager' },
+  { key: 'licence',        label: '🏷 Users & Licence' },
 ]
 const PAYMENT_MODES  = ['', 'card', 'bank_transfer', 'invoice', 'paypal', 'other']
 
@@ -22,6 +24,8 @@ const EMPTY_LIC = {
 }
 
 export default function LicencePage() {
+  const { user } = useAuth()
+  const [view, setView] = useState('licence') // 'licence' | 'platform-users' | 'password'
   const [records,  setRecords]  = useState([])
   const [loading,  setLoading]  = useState(true)
   const [editId,      setEditId]      = useState(null)
@@ -30,6 +34,17 @@ export default function LicencePage() {
   const [addingUser,  setAddingUser]  = useState(false)
   const [editData, setEditData] = useState({})
   const [saving,   setSaving]   = useState(false)
+
+  // ── Change Password (moved here from Admin > API Keys) ──────────────
+  const [pwForm, setPwForm] = useState({ old_password:'', new_password:'' })
+  const changePw = async e => {
+    e.preventDefault()
+    try {
+      await changePassword({ email: user.email, ...pwForm })
+      toast.success('Password updated')
+      setPwForm({ old_password:'', new_password:'' })
+    } catch { toast.error('Failed — check current password') }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -136,6 +151,37 @@ export default function LicencePage() {
 
   return (
     <div>
+      <div className="tabs-bar" style={{ marginBottom: 16 }} role="tablist">
+        <button className={`tab-btn${view === 'licence' ? ' active' : ''}`} onClick={() => setView('licence')}>
+          <BadgeCheck size={14} style={{ marginRight: 5, verticalAlign: '-2px' }} />Licence Management
+        </button>
+        <button className={`tab-btn${view === 'platform-users' ? ' active' : ''}`} onClick={() => setView('platform-users')}>
+          <UserCog size={14} style={{ marginRight: 5, verticalAlign: '-2px' }} />Platform Users
+        </button>
+        <button className={`tab-btn${view === 'password' ? ' active' : ''}`} onClick={() => setView('password')}>
+          <KeyRound size={14} style={{ marginRight: 5, verticalAlign: '-2px' }} />Password
+        </button>
+      </div>
+
+      {view === 'password' && (
+        <div style={{ maxWidth: 400 }}>
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+              <KeyRound size={18} color="var(--brand)" /><h3>Change Password</h3>
+            </div>
+            <form onSubmit={changePw} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="input-group"><label>Current Password</label><input className="input" type="password" value={pwForm.old_password} onChange={e => setPwForm(p => ({ ...p, old_password: e.target.value }))} required /></div>
+              <div className="input-group"><label>New Password</label><input className="input" type="password" value={pwForm.new_password} onChange={e => setPwForm(p => ({ ...p, new_password: e.target.value }))} required /></div>
+              <button className="btn btn-primary" type="submit">Update Password</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {view === 'platform-users' && <IdentityPage />}
+
+      {view === 'licence' && (
+      <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div>
           <h2 style={{ margin: 0 }}>Licence Management</h2>
@@ -373,6 +419,8 @@ export default function LicencePage() {
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
     </div>
   )

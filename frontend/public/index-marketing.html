@@ -519,16 +519,54 @@ footer {
     <a href="#stack">Built on</a>
     <a href="#legal">Legal</a> -->
   </div>
-  <button class="btn-nav-ghost" onclick="window.location.href='/login'">Sign in</button>
-  <button class="btn-nav-cta" onclick="window.location.href='/login?tab=register'">Start free →</button>
+  <button id="navSignIn" class="btn-nav-ghost" onclick="window.location.href='/login'">Sign in</button>
+  <button id="navStartFree" class="btn-nav-cta" onclick="window.location.href='/login?tab=register'">Start free →</button>
+  <button id="navGoToApp" class="btn-nav-cta" style="display:none" onclick="window.location.href='/'">Go to Overview →</button>
 </nav>
+<script>
+  // If already signed in (same af_user token the app uses), swap Sign in / Start free
+  // for the account's plan and a straight link back into the app - the session itself
+  // is untouched here, it only ever clears when the app's own Logout button is pressed.
+  (function () {
+    try {
+      var raw = localStorage.getItem('af_user')
+      var u = raw ? JSON.parse(raw) : null
+      if (!u || !u.token) return
+
+      document.getElementById('navSignIn').style.display = 'none'
+      document.getElementById('navStartFree').style.display = 'none'
+      document.getElementById('navGoToApp').style.display = 'inline-block'
+
+      // Same swap on the hero and bottom-page "start free" CTAs, so a signed-in
+      // visitor scrolling the page never sees a sign-up prompt for an account they already have.
+      ;['heroStartFree', 'ctaStartFree'].forEach(function (id) {
+        var el = document.getElementById(id)
+        if (!el) return
+        el.textContent = 'Go to Overview →'
+        el.onclick = function () { window.location.href = '/' }
+      })
+    } catch (e) {
+      // Malformed/stale session - leave the signed-out nav as-is, but log it: a
+      // silently-swallowed error here looks identical to "not logged in" from the
+      // outside, which makes this exact class of bug very hard to spot otherwise.
+      console.warn('[AccFino] could not read session for nav swap:', e)
+    }
+  })()
+
+  // Re-run on bfcache restore (browser back/forward), since the inline script above
+  // only fires once on the initial parse and won't re-execute if the page is served
+  // from the back/forward cache after logging in or out on another tab.
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) location.reload()
+  })
+</script>
 
 <!-- ─── HERO ──────────────────────────────────────────────── -->
 <section class="hero">
   <div class="hero-left">
     <div class="hero-eyebrow fade-in">
       <span class="hero-eyebrow-dot"></span>
-      Built for Australian business · ATO compliant
+      Built for Australian business · Australian tax rules
     </div>
     <h1 class="fade-up delay-1">
       Accounting that thinks<br>
@@ -538,12 +576,12 @@ footer {
       AccFino unifies AI reconciliation, ML cash flow forecasting, crypto &amp; equity CGT, open banking, and GST invoicing — everything current platforms charge extra for, included from day one.
     </p>
     <div class="hero-actions fade-up delay-3">
-      <button class="btn-hero" onclick="window.location.href='/login?tab=register'">Start free — no card needed</button>
+      <button id="heroStartFree" class="btn-hero" onclick="window.location.href='/login?tab=register'">Start free — no card needed</button>
       <button class="btn-hero-ghost" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">Watch demo  →</button>
     </div>
     <div class="hero-trust fade-up delay-4">
       <div class="trust-item"><span class="trust-check">✓</span> Free base plan forever</div>
-      <div class="trust-item"><span class="trust-check">✓</span> AU data residency always</div>
+      <div class="trust-item"><span class="trust-check">✓</span> Australian-built always</div>
       <div class="trust-item"><span class="trust-check">✓</span> Cancel any time</div>
     </div>
   </div>
@@ -605,7 +643,7 @@ footer {
           <div class="txn-icon b">↓</div>
           <div class="txn-desc">
             <div class="txn-name">CommBank payroll run</div>
-            <div class="txn-cat">Wages · STP Phase 2</div>
+            <div class="txn-cat">Wages</div>
           </div>
           <div class="txn-amt dr">−$9,200.00</div>
         </div>
@@ -626,8 +664,8 @@ footer {
     <span class="ticker-item">Crypto &amp; Equity CGT</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">Open Banking</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">GST Invoice Management</span><span class="ticker-item ticker-sep">·</span>
-    <span class="ticker-item">BAS Direct Lodgement</span><span class="ticker-item ticker-sep">·</span>
-    <span class="ticker-item">STP Phase 2</span><span class="ticker-item ticker-sep">·</span>
+    <span class="ticker-item">Double-entry general ledger</span><span class="ticker-item ticker-sep">·</span>
+    <span class="ticker-item">Face &amp; fingerprint sign-in</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">Ollama LLM Classifier</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">PDF Invoice OCR</span><span class="ticker-item ticker-sep">·</span>
     <!-- duplicate for seamless loop -->
@@ -636,8 +674,8 @@ footer {
     <span class="ticker-item">Crypto &amp; Equity CGT</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">Open Banking</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">GST Invoice Management</span><span class="ticker-item ticker-sep">·</span>
-    <span class="ticker-item">BAS Direct Lodgement</span><span class="ticker-item ticker-sep">·</span>
-    <span class="ticker-item">STP Phase 2</span><span class="ticker-item ticker-sep">·</span>
+    <span class="ticker-item">Double-entry general ledger</span><span class="ticker-item ticker-sep">·</span>
+    <span class="ticker-item">Face &amp; fingerprint sign-in</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">Ollama LLM Classifier</span><span class="ticker-item ticker-sep">·</span>
     <span class="ticker-item">PDF Invoice OCR</span><span class="ticker-item ticker-sep">·</span>
   </div>
@@ -654,76 +692,36 @@ footer {
 <!-- ─── FEATURES ──────────────────────────────────────────── -->
 <section class="section alt" id="features">
   <span class="section-chip">Platform features</span>
-  <h2 class="section-heading">Six modules. <em>One login.</em></h2>
-  <p class="section-sub">Everything Australian businesses need — not fragmented across separate tools, subscriptions, and logins. Each module connects to the next.</p>
-
-  <div class="bento">
-    <div class="bento-card wide">
-      <div class="bento-wide-inner">
-        <div class="bento-wide-text">
-          <div class="bento-icon bi-gold">🔀</div>
-          <div class="bento-title">AI Bank Reconciliation</div>
-          <div class="bento-body">Upload CSV or connect Open Banking for live feeds. The dual-engine classifier — LLM understanding combined with RDR rule logic — auto-categorises every transaction, computes GST, detects duplicates, and flags anomalies. BAS-ready output in minutes, not hours.</div>
-          <span class="bento-tag">LLM + RDR rules · GST · Excel export</span>
-        </div>
-        <div class="bento-mini-chart">
-          <div style="font-size:.6rem;color:var(--ink-3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em">Accuracy</div>
-          <div class="mini-chart-bars" style="height:70px">
-            <div class="mcb b" style="height:55%"></div>
-            <div class="mcb a" style="height:68%"></div>
-            <div class="mcb g" style="height:82%"></div>
-            <div class="mcb g" style="height:91%"></div>
-            <div class="mcb g" style="height:95%"></div>
-          </div>
-          <div style="font-size:.65rem;color:var(--green);font-weight:600;margin-top:5px">95% auto-classified</div>
-        </div>
-      </div>
-    </div>
-    <div class="bento-card">
-      <div class="bento-icon bi-blue">📈</div>
-      <div class="bento-title">ML Cash Flow Forecasting</div>
-      <div class="bento-body">A trained ensemble model predicts next-month cash flow from your transaction history. Visual charts, model leaderboard, and Excel export — included in all plans, not an upgrade.</div>
-      <span class="bento-tag">scikit-learn ensemble · visual charts</span>
-    </div>
-    <div class="bento-card tall">
-      <div class="bento-icon bi-gold">₿</div>
-      <div class="bento-title">Crypto &amp; Equity CGT</div>
-      <div class="bento-body">Import from any Australian or global exchange. AccFino normalises multi-format broker files, detects duplicates across sources, computes capital gains under ATO rules (FIFO / ACB), and exports an ATO-ready tax summary — no manual spreadsheet work.</div>
-      <div style="margin-top:16px;padding:12px;background:var(--gold-lt);border-radius:var(--r-sm);border:1px solid rgba(200,150,62,.15)">
-        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--gold);font-weight:600;margin-bottom:6px">Supported assets</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px">
-          <span style="font-size:.68rem;padding:2px 7px;background:#fff;border-radius:3px;border:1px solid rgba(200,150,62,.2);color:var(--ink-2)">BTC · ETH</span>
-          <span style="font-size:.68rem;padding:2px 7px;background:#fff;border-radius:3px;border:1px solid rgba(200,150,62,.2);color:var(--ink-2)">ASX equities</span>
-          <span style="font-size:.68rem;padding:2px 7px;background:#fff;border-radius:3px;border:1px solid rgba(200,150,62,.2);color:var(--ink-2)">US stocks</span>
-          <span style="font-size:.68rem;padding:2px 7px;background:#fff;border-radius:3px;border:1px solid rgba(200,150,62,.2);color:var(--ink-2)">DeFi</span>
-          <span style="font-size:.68rem;padding:2px 7px;background:#fff;border-radius:3px;border:1px solid rgba(200,150,62,.2);color:var(--ink-2)">+ more</span>
-        </div>
-      </div>
-      <span class="bento-tag">Multi-exchange · ATO CGT rules</span>
-    </div>
-    <div class="bento-card">
-      <div class="bento-icon bi-green">🧾</div>
-      <div class="bento-title">GST Invoice Management</div>
-      <div class="bento-body">Generate GST-compliant invoices, manage customers and business profiles, track payment status, and extract structured data from any PDF invoice using built-in OCR — all from one screen.</div>
-      <span class="bento-tag">PDF OCR · customer management</span>
-    </div>
-    <div class="bento-card">
-      <div class="bento-icon bi-blue">🏦</div>
-      <div class="bento-title">Open Banking Feeds</div>
-      <div class="bento-body">Direct connections to Australian banks. Transactions flow in automatically, are classified in real time, and update your reconciliation without a manual CSV download.</div>
-      <span class="bento-tag">Westpac · CommBank · ANZ · NAB</span>
-    </div>
-    <div class="bento-card wide">
-      <div class="bento-wide-inner">
-        <div class="bento-wide-text">
-          <div class="bento-icon bi-night" style="background:var(--night-3)">🤖</div>
-          <div class="bento-title">Dual Classification Engine</div>
-          <div class="bento-body">AccFino combines an Ollama LLM for contextual understanding with an RDR (Ripple Down Rules) engine for deterministic business rules. Train and update rules directly in the admin panel — no model retraining needed. The result is higher accuracy than either approach alone.</div>
-          <span class="bento-tag" style="background:var(--night-3);border-color:var(--night-border);color:rgba(255,255,255,.5)">Ollama · RDR rules · admin training UI</span>
-        </div>
-      </div>
-    </div>
-  </div>
+  <h2 class="section-heading">Every part of your finances. <em>One login.</em></h2>
+  <p class="section-sub">Organised by business area, not fragmented across separate tools, subscriptions and logins. Each area connects to the next.</p>
+  <!-- Generated from /modules.json - the same registry that drives the app's side panel and Home page.
+       Only live and preview modules are shown here, so the site never advertises a feature that isn't available. -->
+  <div class="bento" id="module-registry" aria-live="polite"></div>
+  <noscript><p class="section-sub">Enable JavaScript to see the full module list.</p></noscript>
+  <script>
+  (function () {
+    var esc = function (t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; };
+    fetch('/modules.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (reg) {
+      var avail = function (m) { return m.status === 'live' || m.status === 'beta'; };
+      var html = '';
+      reg.domains.slice().sort(function (a, b) { return a.order - b.order; }).forEach(function (d, i) {
+        var mods = reg.modules.filter(function (m) { return m.domain === d.id && avail(m) && (m.marketing || m.nav); });
+        if (!mods.length) return;
+        html += '<div class="bento-card' + (i === 0 ? ' wide' : '') + '" data-domain="' + esc(d.id) + '">' +
+          '<div class="bento-icon ' + (i % 2 ? 'bi-blue' : 'bi-gold') + '">' + esc(d.emoji) + '</div>' +
+          '<div class="bento-title">' + esc(d.name) + '</div>' +
+          '<div class="bento-body">' + mods.map(function (m) {
+            return '<p style="margin:0 0 8px"><strong>' + esc(m.name) + (m.status === 'beta' ? ' (preview)' : '') + '.</strong> ' +
+                   esc(m.marketing || m.blurb) + (m.plans ? ' <em>' + esc(m.plans) + '.</em>' : '') + '</p>';
+          }).join('') + '</div>' +
+          '<span class="bento-tag">' + mods.map(function (m) { return esc(m.name); }).join(' · ') + '</span></div>';
+      });
+      document.getElementById('module-registry').innerHTML = html;
+    }).catch(function () {
+      document.getElementById('module-registry').innerHTML = '<p class="section-sub">Module list unavailable - please refresh.</p>';
+    });
+  })();
+  </script>
 </section>
 
 <!-- ─── ADVANTAGES ─────────────────────────────────────────── -->
@@ -741,7 +739,7 @@ footer {
     <div class="adv-card">
       <div class="adv-num">02</div>
       <div class="adv-title">Crypto CGT — built in, not bolted on</div>
-      <div class="adv-body">Current platforms have no crypto CGT capability. Australian investors managing crypto alongside business accounts pay for separate tools, manually reconcile, and risk ATO audit exposure. <span class="adv-highlight">AccFino handles it natively — import, normalise, calculate, lodge.</span></div>
+      <div class="adv-body">Current platforms have no crypto CGT capability. Australian investors managing crypto alongside business accounts pay for separate tools, manually reconcile, and risk ATO audit exposure. <span class="adv-highlight">AccFino handles it natively — import, normalise and calculate - with ATO lodgement coming.</span></div>
     </div>
     <div class="adv-card">
       <div class="adv-num">03</div>
@@ -774,10 +772,10 @@ footer {
       <div class="compare-row feat-name">Full Australian Tax Return (ITR)</div>
       <div class="compare-row feat-name">Open Banking / bank feeds</div>
       <div class="compare-row feat-name">PDF invoice &amp; receipt OCR</div>
-      <div class="compare-row feat-name">Australian Payroll + STP Phase 2</div>
+      <div class="compare-row feat-name">Australian payroll (STP lodgement coming)</div>
       <div class="compare-row feat-name">Smart Lending assessment</div>
       <div class="compare-row feat-name">Rule-based + LLM classifier</div>
-      <div class="compare-row feat-name">AU data residency</div>
+      <div class="compare-row feat-name">Australian-built</div>
       <div class="compare-row feat-name">Free starting plan</div>
       <div class="compare-row feat-name">Starting price (AUD/mo)</div>
     </div>
@@ -955,7 +953,7 @@ footer {
   <h2>Start free today.<br><em>Upgrade when you're ready.</em></h2>
   <p>No credit card. No lock-in. Full access to Dashboard and Reconciliation from day one.</p>
   <div class="cta-final-actions">
-    <button class="btn-hero" onclick="window.location.href='/login?tab=register'">Create free account →</button>
+    <button id="ctaStartFree" class="btn-hero" onclick="window.location.href='/login?tab=register'">Create free account →</button>
     <button class="btn-hero-ghost" onclick="window.location.href='mailto:contact@accfino.com?subject=AccFino Enquiry'">Talk to the team</button>
   </div>
   <div class="cta-trust">
@@ -965,11 +963,11 @@ footer {
     </div>
     <div class="cta-trust-item">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L4.5 9.5L11 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      AU data residency
+      Australian-built
     </div>
     <div class="cta-trust-item">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L4.5 9.5L11 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      ATO compliant
+      Australian tax rules
     </div>
     <div class="cta-trust-item">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L4.5 9.5L11 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1076,7 +1074,7 @@ footer {
         </div>
         <span>Acc<span style="color:#FF6B35">Fino</span></span>
       </div>
-      <p class="footer-brand-desc">Intelligent accounting software built for Australian small businesses, sole traders, and accounting firms. ATO compliant. AU hosted.</p>
+      <p class="footer-brand-desc">Intelligent accounting software built for Australian small businesses, sole traders, and accounting firms. Built for Australian tax rules.</p>
     </div>
     <div class="footer-col">
       <h4>Product</h4>
@@ -1108,7 +1106,7 @@ footer {
   <div class="footer-bottom">
     <p>© 2026 AccFino Pty Ltd · ABN XX XXX XXX XXX · contact@accfino.com · www.accfino.com</p>
     <div class="footer-badges">
-      <span class="foot-badge">ATO Compliant</span>
+      <span class="foot-badge">Australian Tax Rules</span>
       <span class="foot-badge">AU Data</span>
       <span class="foot-badge">SSL Secured</span>
       <span class="foot-badge">Stripe Payments</span>
@@ -1150,7 +1148,7 @@ document.querySelectorAll('.bento-card, .adv-card, .plan, .testi, .stack-card, .
 <script>
 (function(){
   var API='api/pricing/plans', BUNDLES=['basic','premium'], BASE='base';
-  var DEFAULTS=window.__ACCFINO_PRICING__||{"base":{"name":"Vault","description":"Dashboard + CSV reconciliation","price_monthly":0,"price_yearly":0,"badge":"Free","highlight":false,"features":["Dashboard overview & stats","CSV bank reconciliation (up to 500 txns/mo)","Open Banking unlocked when you add any paid plan","6 months free access","Upgrade anytime"]},"trading":{"name":"Trading","description":"Crypto & equity CGT + Open Banking","price_monthly":1500,"price_yearly":15000,"badge":"","highlight":false,"features":["Crypto CGT calculation","Equity CGT reports","ATO-ready tax summaries","Multi-exchange support","Open Banking included"]},"cashflow":{"name":"Cash Flow","description":"ML-powered cash flow forecasting","price_monthly":1500,"price_yearly":15000,"badge":"","highlight":false,"features":["ML next-month prediction","Visual cash flow charts","Export to Excel","Historical trend analysis","Open Banking included"]},"invoice":{"name":"Invoice","description":"GST invoices & PDF extraction","price_monthly":1200,"price_yearly":12000,"badge":"","highlight":false,"features":["Create GST-compliant invoices","Extract data from PDF invoices","Customer & business management","Invoice status tracking","Open Banking included"]},"basic":{"name":"Full Bundle","description":"All modules + Open Banking","price_monthly":4900,"price_yearly":49000,"badge":"","highlight":false,"features":["Full bank reconciliation + Open Banking","Crypto & equity CGT reports","ML cash flow forecast","GST invoice management","Save vs individual modules"]},"premium":{"name":"Opus","description":"Complete suite, best value","price_monthly":3900,"price_yearly":39000,"badge":"Best Value","highlight":true,"features":["Everything in Full Bundle","Save $10/month vs Full Bundle","Priority support","Early access to new features","Unlimited transactions & exports"]}};
+  var DEFAULTS=window.__ACCFINO_PRICING__||{"base":{"name":"Vault","description":"Dashboard + CSV reconciliation","price_monthly":0,"price_yearly":0,"badge":"Free","highlight":false,"features":["Dashboard overview & stats","CSV bank reconciliation (up to 500 txns/mo)","Open Banking unlocked when you add any paid plan","6 months free access","Upgrade anytime"]},"trading":{"name":"Trading","description":"Crypto & equity CGT + Open Banking","price_monthly":1500,"price_yearly":15000,"badge":"","highlight":false,"features":["Crypto CGT calculation","Equity CGT reports","CGT tax summaries for your return","Multi-exchange support","Open Banking included"]},"cashflow":{"name":"Cash Flow","description":"ML-powered cash flow forecasting","price_monthly":1500,"price_yearly":15000,"badge":"","highlight":false,"features":["ML next-month prediction","Visual cash flow charts","Export to Excel","Historical trend analysis","Open Banking included"]},"invoice":{"name":"Invoice","description":"GST invoices & PDF extraction","price_monthly":1200,"price_yearly":12000,"badge":"","highlight":false,"features":["Create GST-compliant invoices","Extract data from PDF invoices","Customer & business management","Invoice status tracking","Open Banking included"]},"basic":{"name":"Full Bundle","description":"All modules + Open Banking","price_monthly":4900,"price_yearly":49000,"badge":"","highlight":false,"features":["Full bank reconciliation + Open Banking","Crypto & equity CGT reports","ML cash flow forecast","GST invoice management","Save vs individual modules"]},"premium":{"name":"Opus","description":"Complete suite, best value","price_monthly":3900,"price_yearly":39000,"badge":"Best Value","highlight":true,"features":["Everything in Full Bundle","Save $10/month vs Full Bundle","Priority support","Early access to new features","Unlimited transactions & exports"]}};
 
   function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function fmt(c){return c===0?'$0':'$'+(c/100);}

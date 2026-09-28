@@ -4,7 +4,7 @@
  * CGT discount (50% for >12 months), main residence exemption
  */
 import React, { useState } from 'react'
-import { Plus, Trash2, Calculator, Download, Info } from 'lucide-react'
+import { Plus, Trash2, Calculator, Download, Info, Home } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const fmtAUD = n => new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD',minimumFractionDigits:2}).format(n||0)
@@ -212,9 +212,12 @@ export default function PropertyCGT() {
 
   return (
     <div style={{padding:24}}>
-      <div style={{marginBottom:22}}>
-        <h1>🏠 Property CGT</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <Home size={22} />
+          <h2 style={{margin:0}}>Property CGT</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Australian property capital gains tax · Cost base · Main residence exemption · 50% CGT discount
         </p>
       </div>

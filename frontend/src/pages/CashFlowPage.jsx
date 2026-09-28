@@ -70,9 +70,12 @@ export default function CashFlowPage() {
 
   return (
     <div className="fade-in">
-      <div style={{marginBottom:22}}>
-        <h1>💰 Cash Flow Forecast</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <TrendingUp size={22} />
+          <h2 style={{margin:0}}>Cash Flow Forecast</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Upload 12+ months of transactions · map columns · train 17 ML models · predict next month
         </p>
       </div>

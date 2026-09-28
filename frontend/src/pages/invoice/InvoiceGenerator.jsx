@@ -93,8 +93,11 @@ export default function InvoiceGenerator() {
     <div className="fade-in">
       <div style={{marginBottom:22,display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
         <div>
-          <h1>📄 Invoice Manager</h1>
-          <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>Create GST-compliant invoices, manage businesses, track payment status</p>
+          <div className="flex items-center gap-1">
+            <FileText size={22} />
+            <h2 style={{margin:0}}>Invoice Manager</h2>
+          </div>
+          <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>Create GST-compliant invoices, manage businesses, track payment status</p>
         </div>
         <div style={{display:'flex',gap:8}}>
           <button className="btn btn-outline" onClick={()=>setView('new-biz')}><Building2 size={15}/> New Business</button>

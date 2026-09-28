@@ -1,8 +1,10 @@
-import React, { useState, lazy, Suspense } from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import CryptoTrading from './trading/CryptoTrading.jsx'
 import StockTrading  from './trading/StockTrading.jsx'
 import PropertyCGT   from './trading/PropertyCGT.jsx'
 import TaxReturnData from './trading/TaxReturnData.jsx'
+import { FolderArchive, TrendingUp } from 'lucide-react'
 
 const TABS = [
   { key:'crypto',   label:'₿ Crypto Trading'          },
@@ -12,13 +14,22 @@ const TABS = [
 ]
 
 export default function TradingPage() {
-  const [tab, setTab] = useState('crypto')
+  // The tab lives in the address (?tab=) so the side panel can open Tax return data or Investments directly
+  const [params, setParams] = useSearchParams()
+  const valid = TABS.map(t => t.key)
+  const fromUrl = params.get('tab')
+  const [tab, setTabState] = useState(valid.includes(fromUrl) ? fromUrl : 'crypto')
+  useEffect(() => { if (valid.includes(fromUrl) && fromUrl !== tab) setTabState(fromUrl) }, [fromUrl])
+  const setTab = k => { setTabState(k); setParams({ tab: k }, { replace: true }) }
   return (
     <div className="fade-in">
-      <div style={{marginBottom:18}}>
-        <h1>🧾 Taxation & Trading</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
-          ATO-compliant CGT · Crypto · Equity · Property · Full Australian Tax Return data
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          {tab === 'taxreturn' || tab === 'property' ? <FolderArchive size={22} /> : <TrendingUp size={22} />}
+          <h2 style={{margin:0}}>{tab === 'taxreturn' || tab === 'property' ? 'Tax Returns' : 'Shares & Crypto'}</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
+          Capital gains using Australian CGT rules · Crypto · Shares · Property · Individual tax return data
         </p>
       </div>
       <div className="tabs-bar" style={{marginBottom:0}}>

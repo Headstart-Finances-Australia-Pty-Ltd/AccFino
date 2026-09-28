@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import PasskeySignIn from '../components/security/PasskeySignIn.jsx'
 import { register, forgotPassword, getPricingPlans, createCheckout } from '../lib/api.js'
 import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -447,6 +448,7 @@ export default function LoginPage() {
                     Forgot your password?
                   </button>
                 </div>
+                <PasskeySignIn />
               </form>
             ) : (
               /* ── Register form ── */

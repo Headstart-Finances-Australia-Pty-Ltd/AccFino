@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { FileText } from 'lucide-react'
 import InvoiceGenerator from './invoice/InvoiceGenerator.jsx'
 import InvoiceExtractor from './invoice/InvoiceExtractor.jsx'
 
@@ -6,9 +7,12 @@ export default function InvoicePage() {
   const [tab, setTab] = useState('generator')
   return (
     <div className="fade-in">
-      <div style={{marginBottom:18}}>
-        <h1>📄 Invoice</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <FileText size={22} />
+          <h2 style={{margin:0}}>Invoice</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Create GST-compliant invoices and extract structured data from PDF documents
         </p>
       </div>

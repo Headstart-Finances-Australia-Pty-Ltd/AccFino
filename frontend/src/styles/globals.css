@@ -263,7 +263,12 @@ select.select-compact { padding: 4px 26px 4px 8px; font-size: .78rem; border-rad
   display: flex; border-bottom: 2px solid var(--border);
   background: var(--surface); border-radius: var(--r-lg) var(--r-lg) 0 0;
   padding: 0 4px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }
+.tabs-bar::-webkit-scrollbar { height: 5px; }
+.tabs-bar::-webkit-scrollbar-track { background: transparent; }
+.tabs-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+.tab-btn { flex-shrink: 0; }
 .tab-btn {
   padding: 13px 20px; font-size: .875rem; font-weight: 600;
   color: var(--text-3); background: none; border: none;
@@ -285,6 +290,50 @@ select.select-compact { padding: 4px 26px 4px 8px; font-size: .78rem; border-rad
 .nav-item:hover { color: #fff; background: rgba(255,255,255,.08); }
 .nav-item.active { color: #fff; background: rgba(255,255,255,.14); font-weight: 600; }
 .nav-item .nav-icon { flex-shrink: 0; }
+
+/* ── Business-domain accordion (sidebar) ──────────────────────────────────
+   Each domain is its own clearly bounded block: a header row you click to
+   expand/collapse, and — when open — an indented list of its modules.
+   Blocks are separated by a hairline so they never visually run together. */
+.domain-group {
+  border-top: 1px solid rgba(255,255,255,.07);
+  padding-top: 3px; margin-top: 3px;
+}
+.domain-group:first-of-type { border-top: none; margin-top: 2px; padding-top: 0; }
+
+.domain-row { justify-content: flex-start; align-items: flex-start; gap: 10px; padding-top: 9px; padding-bottom: 9px; }
+.domain-row svg { margin-top: 1px; }
+.domain-row-label { font-size: .8rem; font-weight: 600; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.domain-row-tagline { font-size: .64rem; font-weight: 500; opacity: .55; line-height: 1.3; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.domain-row.active .domain-row-tagline { opacity: .75; }
+.domain-chevron { flex-shrink: 0; opacity: .5; transition: transform .18s ease; }
+.domain-row.open .domain-chevron { opacity: .85; }
+.domain-row.active { color: #fff; }
+
+.domain-submenu {
+  display: flex; flex-direction: column; gap: 1px;
+  margin: 2px 0 6px 19px; padding-left: 10px;
+  border-left: 1.5px solid rgba(255,255,255,.1);
+}
+.nav-subitem {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: var(--r-sm);
+  font-size: .74rem; font-weight: 500; color: rgba(255,255,255,.52);
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+  overflow: hidden; transition: all .12s;
+}
+.nav-subitem-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .55; flex-shrink: 0; }
+.nav-subitem-label { overflow: hidden; text-overflow: ellipsis; }
+.nav-subitem:hover { color: #fff; background: rgba(255,255,255,.07); }
+.nav-subitem.active { color: #fff; background: rgba(255,255,255,.13); font-weight: 700; }
+.nav-subitem.disabled { opacity: .4; cursor: not-allowed; }
+.nav-subitem .soon-tag {
+  margin-left: auto; flex-shrink: 0; font-size: .55rem; font-weight: 700;
+  padding: 1px 6px; border-radius: 100; border: 1px solid rgba(255,255,255,.3);
+  letter-spacing: .04em; opacity: .85;
+}
 
 /* ── Divider ── */
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
@@ -523,3 +572,11 @@ input.cell-input:focus { border-color: var(--brand); background: var(--surface);
 /* Rows with pending inline edits */
 tr.row-edited { background: rgba(200,150,62,.06) !important; }
 tr.row-edited input.cell-input { border-color: rgba(200,150,62,.25); }
+
+/* Side panel menu: visible scroll bar on the dark background (Chrome/Edge/Safari + Firefox) */
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent; }
+.sidebar-scroll::-webkit-scrollbar { width: 8px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 8px; }
+.sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
+.sidebar-scroll > * { flex-shrink: 0; }

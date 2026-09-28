@@ -42,9 +42,12 @@ export default function InvoiceExtractor() {
 
   return (
     <div className="fade-in">
-      <div style={{marginBottom:22}}>
-        <h1>🔍 Invoice & Statement Extractor</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>Extract transactions and invoice data from PDF bank statements and image receipts using OCR</p>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <ScanLine size={22} />
+          <h2 style={{margin:0}}>Invoice & Statement Extractor</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>Extract transactions and invoice data from PDF bank statements and image receipts using OCR</p>
       </div>
 
       {/* Dependency status */}

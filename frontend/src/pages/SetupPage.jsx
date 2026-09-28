@@ -5,6 +5,7 @@ import { parseCSVText, toCSV, downloadCSV } from '../lib/csvUtils.js'
 import { rdrList, rdrCreate, rdrUpdate, rdrDelete, coaAccounts, kbGet, kbVendorUpsert, kbVendorDelete, kbKeywordUpsert, kbKeywordDelete, companyList, companyUpdate, companyCreate, companyDelete, companyAddAlias } from '../lib/api.js'
 import { useAuth } from '../hooks/useAuth.jsx'
 import toast from 'react-hot-toast'
+import OrganisationPage from './settings/OrganisationPage.jsx'
 
 // - CsvBar: reusable upload/download button pair -----------------------
 function CsvBar({ onUpload, onDownload, label='CSV' }) {
@@ -1331,10 +1332,11 @@ function KbTab() {
 
 
 const TABS = [
-  { key:'business', label:'🏢 Business Account' },
-  { key:'coa',      label:'📋 Chart of Accounts' },
-  { key:'rdr',      label:'⚙️ Business Rules' },
-  { key:'kb',       label:'📚 Knowledge Base' },
+  { key:'organisation', label:'🏛️ Organisation' },
+  { key:'business',     label:'🏢 Business Account' },
+  { key:'coa',          label:'📋 Chart of Accounts' },
+  { key:'rdr',          label:'⚙️ Business Rules' },
+  { key:'kb',           label:'📚 Knowledge Base' },
 ]
 
 // ── Business Account Tab ──────────────────────────────────────────────────────
@@ -1472,16 +1474,19 @@ function BusinessAccountTab() {
 
 
 export default function SetupPage() {
-  const [tab, setTab] = useState('business')
+  const [tab, setTab] = useState('organisation')
   return (
     <div className="fade-in">
-      <div style={{marginBottom:20}}>
-        <h1>⚙️ Setup</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
-          Chart of Accounts · Business Rules · Knowledge Base · Invoice Generator
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <Zap size={22} />
+          <h2 style={{margin:0}}>Business Setup</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
+          Organisation · Business Account · Chart of Accounts · Business Rules · Knowledge Base
         </p>
       </div>
-      <div className="tabs-bar" style={{marginBottom:0}}>
+      <div className="tabs-bar" style={{marginBottom:0, flexWrap:'nowrap', overflowX:'auto'}}>
         {TABS.map(t=>(
           <button key={t.key} className={`tab-btn${tab===t.key?' active':''}`} onClick={()=>setTab(t.key)}>
             {t.icon} {t.label}
@@ -1490,6 +1495,7 @@ export default function SetupPage() {
       </div>
       <div style={{background:'var(--surface)',borderRadius:'0 0 var(--r-lg) var(--r-lg)',
         border:'1px solid var(--border)',borderTop:'none',padding:'20px 24px',boxShadow:'var(--sh-sm)'}}>
+        {tab==='organisation' && <OrganisationPage/>}
         {tab==='business' && <BusinessAccountTab/>}
         {tab==='coa' && <CoaTab/>}
         {tab==='rdr' && <RdrTab/>}

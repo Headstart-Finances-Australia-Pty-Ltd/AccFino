@@ -1,6 +1,13 @@
 import axios from 'axios'
+import { handleIamBlock, persistTokenFields } from './authFetch.js'
 
 const http = axios.create({ baseURL: '/api' })
+
+export const errMsg = (e, fallback = 'Something went wrong') => {
+  const d = e?.response?.data?.detail
+  if (Array.isArray(d)) return d.map(x => x.msg || JSON.stringify(x)).join('; ')
+  return d || e?.message || fallback
+}
 
 // Attach JWT token to every request automatically
 http.interceptors.request.use(cfg => {
@@ -15,7 +22,11 @@ http.interceptors.request.use(cfg => {
 http.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    // A 401 on a sign-in call means wrong credentials - let the login form show the message.
+    // Any other 401 means the session ended - clear it and go to the login page.
+    const url = err.config?.url || ''
+    handleIamBlock(err.response?.status, err.response?.data)
+    if (err.response?.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/mfa/')) {
       localStorage.removeItem('af_user')
       window.location.href = '/login'
     }
@@ -27,7 +38,8 @@ http.interceptors.response.use(
 export const login          = (email, pw)    => http.post('/auth/login', { email, password: pw })
 export const verifySession  = (userId)       => http.get(`/auth/verify/${userId}`)
 export const register       = (data)         => http.post('/auth/register', data)
-export const changePassword = (data)         => http.post('/auth/change-password', data)
+// Password change revokes other sessions and returns a fresh token for this one
+export const changePassword = (data)         => http.post('/auth/change-password', data).then(r => { persistTokenFields(r.data); return r })
 export const getAllUsers     = ()             => http.get('/auth/users')
 export const deleteUser     = (id)           => http.delete(`/auth/users/${id}`)
 
@@ -91,6 +103,13 @@ export const groqPoolAdd        = (body)          => http.post('/groq-pool', bod
 export const groqPoolUpdate     = (id, body)      => http.patch(`/groq-pool/${id}`, body)
 export const groqPoolRemove     = (id)            => http.delete(`/groq-pool/${id}`)
 export const groqPoolListModels = (key_value)     => http.post('/groq-pool/models', { key_value })
+
+// Admin Console > API Keys > platform settings (Database, S3, System Email, Calendly, Meeting Link)
+export const platformSettings       = (service)         => http.get('/platform-settings', { params: service ? { service } : {} })
+export const savePlatformSetting    = (body)             => http.post('/platform-settings', body)
+export const deletePlatformSetting  = (id)               => http.delete(`/platform-settings/${id}`)
+export const testDatabaseConnection = (connection_url)   => http.post('/platform-settings/test-database', { connection_url })
+export const testS3Connection       = (body)             => http.post('/platform-settings/test-s3', body)
 
 // ── Invoice Extractor ─────────────────────────────────────────────────────────
 export const ieStatus      = ()              => http.get('/invoice-extractor/status')
@@ -178,6 +197,29 @@ export const companyApprove  = (id)          => http.post(`/company/approve/${id
 export const companyCategories = ()          => http.get('/company/categories')
 export const savePricingPlans   = (data)          => http.post('/pricing/plans', data)
 export const updatePricingPlan  = (planId, data)  => http.patch(`/pricing/plans/${planId}`, data)
+
+// Bare axios on purpose (no interceptors): this is read on /login before anyone is signed in, and the
+// shared client turns any 401 into a redirect to /login - which must never happen for this call.
+export const getModuleVisibility  = ()      => axios.get('/api/module-visibility')
+export const saveModuleVisibility = (data)  => http.post('/module-visibility', data)
+
+// ── Open Banking - Square & openfeed ─────────────────────────────────────────
+export const squareStatus     = ()          => http.get('/square/status')
+export const squareSaveConfig = (data)      => http.post('/square/config', data)
+export const openfeedStatus     = ()        => http.get('/openfeed/status')
+export const openfeedSaveConfig = (data)    => http.post('/openfeed/config', data)
+export const openfeedGenerateKeys = ()      => http.post('/openfeed/keys', {})
+export const openfeedConnect      = ()      => http.post('/openfeed/connect', {})
+export const openfeedDisconnect   = ()      => http.post('/openfeed/disconnect', {})
+
+
+// ── Payments - Stripe (credit card) ──────────────────────────────────────────
+export const stripeStatus     = ()          => http.get('/stripe/status')
+export const stripeSaveConfig = (data)      => http.post('/stripe/config', data)
+
+// ── Bank account (outgoing payments: invoice payouts / refunds) ─────────────
+export const bankAccountStatus     = ()     => http.get('/bank-account/status')
+export const bankAccountSaveConfig = (data) => http.post('/bank-account/config', data)
 export const processFilesWithSession = (fd) =>
   http.post('/reconcile/process-with-session', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const captureWho = (who, desc, username) =>

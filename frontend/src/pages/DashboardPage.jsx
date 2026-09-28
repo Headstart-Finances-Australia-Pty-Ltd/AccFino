@@ -16,7 +16,7 @@ const QUICK = [
   {to:'/trading',        icon:'📈', label:'Trading Analysis',      desc:'Crypto & equity CGT tax reports',            key:'trading'},
   {to:'/cash-flow',      icon:'💰', label:'Cash Flow Forecast',    desc:'ML-powered next-month prediction',           key:'cash-flow'},
   {to:'/invoice',        icon:'📄', label:'Invoice Manager',       desc:'Create GST invoices & extract from PDFs',    key:'invoice'},
-  {to:'/admin',          icon:'🧠', label:'Admin & ML Classifier', desc:'Train models, RDR rules, manage users',      key:'admin', adminOnly:true},
+  {to:'/admin',          icon:'🔑', label:'Admin & API Keys',      desc:'Train models, RDR rules, manage users',      key:'admin', adminOnly:true},
 ]
 
 function StatCard({label,value,sub,colorVar,iconColor,icon:Icon}) {

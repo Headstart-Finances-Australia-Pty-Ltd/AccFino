@@ -1015,7 +1015,7 @@ export default function OutputPanel({
         const res = await captureWho(row.who.trim(), row.description || '', username)
         const d = res.data
         if (d?.action === 'company_created_pending') {
-          toast(`🏢 "${row.who}" added as pending company — approve in Company DB`,
+          toast(`🏢 "${row.who}" added as pending company — approve in Settings > Setup > Knowledgebase`,
             { duration: 5000, icon: '🔔' })
         } else if (d?.action === 'aliases_added' && d.aliases_added > 0) {
           // Silent — existing company got new aliases, no need to notify

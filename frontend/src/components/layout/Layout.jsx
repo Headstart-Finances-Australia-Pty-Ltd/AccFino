@@ -1,32 +1,27 @@
 import TopBar from '../ui/TopBar.jsx'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth.jsx'
 import UpgradeBanner from '../UpgradeBanner.jsx'
 import { licenceMyModules, getMyPlan } from '../../lib/api.js'
-import { Building2, LayoutDashboard, ArrowLeftRight, TrendingUp, BarChart2, FileText, ShieldCheck, ChevronLeft, ChevronRight, FolderOpen, BadgeCheck, Settings, Cpu, BookOpen, DollarSign, Users } from 'lucide-react'
+import { useModuleVisibility } from '../../hooks/useModuleVisibility.jsx'
+import { domainGroups, hrefOf, activeLeafId, domainForLocation, visibleGroups } from '../../lib/modules.js'
+import { Building2, LayoutDashboard, ArrowLeftRight, TrendingUp, BarChart2, FileText, ShieldCheck, ChevronLeft, ChevronRight, FolderOpen, BadgeCheck, Settings, Cpu, BookOpen, DollarSign, Users, Landmark, Building, Lock, UserCog, LineChart,
+  Receipt, ShoppingCart, FileBarChart, CheckCircle2, Send, Upload, Home, Wallet, Target } from 'lucide-react'
 
 // ── Reconciliation session context — persists across route navigation ─────────
 export const ReconciliationContext = React.createContext(null)
 
-const NAV = [
-  { to:'/',               icon:LayoutDashboard, label:'Overview',         sub:'Modules & Plan',           key:'dashboard',      adminOnly:false, allPlans:true },
-  { to:'/accounting',     icon:BookOpen,        label:'Accounting',       sub:'Dashboard · Recon · Sale', key:'accounting',     adminOnly:false },
-  { to:'/trading',        icon:TrendingUp,      label:'Taxation & Trading',sub:'CGT · Tax Return',        key:'trading',        adminOnly:false },
-  { to:'/payroll',        icon:Users,           label:'Payroll',          sub:'PAYG · Super · STP',       key:'payroll',        adminOnly:false },
-  { to:'/lending',        icon:DollarSign,      label:'Smart Lending',    sub:'Statement analysis · HEM · UMI', key:'lending',     adminOnly:false },
-]
+// Side panel entries come from the module registry (src/config/modules.json), grouped by domain.
+const ICONS = { BookOpen, Landmark, TrendingUp, Users, FileText, LineChart, DollarSign, ArrowLeftRight, Receipt,
+  ShoppingCart, FileBarChart, CheckCircle2, Send, Upload, Home, Wallet, Target, ShieldCheck, FolderOpen, Lock }
+const HOME = { to:'/', icon:LayoutDashboard, label:'Overview', sub:'Modules & Plan', key:'dashboard' }
 
-// Setup is always visible; admin items below only for admins
-const CONTROL_PANEL_SETUP = [
-  { to:'/setup',          icon:Settings,        label:'Setup',           sub:'COA · Rules · Invoice',   key:'setup'          },
-]
-const CONTROL_PANEL = [
-  { to:'/admin',          icon:ShieldCheck,     label:'ML Classifier',   sub:'Training & RDR rules',    key:'admin'          },
-  { to:'/file-manager',   icon:FolderOpen,      label:'File Manager',    sub:'Files & database tables', key:'file-manager'   },
-  { to:'/licence',        icon:BadgeCheck,      label:'Admin & Licence', sub:'Users, roles & licences', key:'licence'        },
-  { to:'/pricing-admin',  icon:DollarSign,      label:'Pricing Admin',   sub:'Edit plan prices',        key:'pricing-admin'  },
-]
+// Settings is visible to everyone (Identity tab inside it only for organisation owners/admins),
+// grouped under "Supporting Modules" alongside Practice. Admin is its own section, visible to
+// the AccFino super admin team only.
+const SETTINGS_ITEM = { to:'/settings', icon:Settings,    label:'Settings',       sub:'Organisation · Business Setup · IAM · Open Banking · Integrations', key:'settings' }
+const ADMIN_ITEM    = { to:'/admin',    icon:ShieldCheck, label:'Admin Console',  sub:'ML · Licences · Files · Pricing · Users',        key:'admin'    }
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -35,6 +30,8 @@ export default function Layout() {
   const [col,            setCol]           = useState(false)
   const [allowedModules, setAllowedModules] = useState(null)
   const [myPlan,         setMyPlan]        = useState(null)
+  const [openDomainId,   setOpenDomainId]  = useState(null)
+  const { isDomainVisible, isModuleVisible } = useModuleVisibility()
 
   const fetchModules = () => {
     if (!user) return
@@ -61,7 +58,14 @@ export default function Layout() {
     )
   }, [user?.id])
 
-  const showUpgradeBtn = myPlan && !(myPlan.plan_id === 'premium' && myPlan.billing_period === 'yearly')
+  // Phase 0: when MFA is enforced platform-wide, users must enrol before anything else
+  useEffect(() => {
+    if ((user?.mfa_required_to_enrol || user?.password_change_required) && loc.pathname !== '/settings/iam') nav('/settings/iam?tab=security', { replace: true })
+  }, [user?.mfa_required_to_enrol, user?.password_change_required, loc.pathname])
+
+  // Which domain owns the currently active route — keeps that domain's dropdown open as you navigate.
+  const currentDomainId = domainForLocation(loc)
+  useEffect(() => { setOpenDomainId(currentDomainId) }, [currentDomainId])
 
   const isAdmin = (Array.isArray(user?.roles) && user.roles.includes('admin')) || user?.is_admin === true
 
@@ -69,6 +73,7 @@ export default function Layout() {
     if (moduleKey === 'setup') return true        // Control Panel always accessible
     if (moduleKey === 'accounting') return true   // Accounting always accessible — Reconciliation is free for all
     if (moduleKey === 'lending')     return true   // Smart Lending always accessible
+    if (moduleKey === 'ledger')      return true   // Phase 0: General Ledger available to every organisation
     if (moduleKey === 'dashboard') return true    // Overview always accessible
     if (isAdmin) return true
     if (allowedModules === null) return false     // still loading
@@ -78,7 +83,8 @@ export default function Layout() {
 
   const initials = (user?.name || user?.email || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
   const userName = user?.name || user?.email || ''
-  const pageName = loc.pathname === '/' ? 'Overview' : loc.pathname.slice(1).replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase())
+  const pageName = loc.pathname === '/' ? 'Overview' : loc.pathname.slice(1).split('/').filter(Boolean)
+    .map(p => p.replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/^Ml /, 'ML ')).join(' · ')
 
   // ── Reconciliation state — kept in Layout so it survives navigation ──────
   const [reconTransactions,   setReconTransactions]   = useState(null)
@@ -121,8 +127,8 @@ export default function Layout() {
     <UpgradeBanner />
     <div style={{display:'flex', minHeight:'100vh', background:'var(--bg)'}}>
       <aside style={{
-        width:col ? 'var(--sidebar-w-sm)' : 'var(--sidebar-w)', minHeight:'100vh', flexShrink:0,
-        position:'relative', display:'flex', flexDirection:'column',
+        width:col ? 'var(--sidebar-w-sm)' : 'var(--sidebar-w)', height:'100vh', flexShrink:0,
+        position:'sticky', top:0, display:'flex', flexDirection:'column',
         background:'#0D1117',
         transition:'width .22s cubic-bezier(.4,0,.2,1)', overflow:'hidden',
       }}>
@@ -154,14 +160,31 @@ export default function Layout() {
         </div>
 
         {/* Nav */}
-        <nav style={{flex:1, padding:col ? '12px 6px' : '12px 10px', display:'flex', flexDirection:'column',
+        {/* minHeight:0 lets this flex child shrink so the menu scrolls inside the fixed-height panel */}
+        <nav className="sidebar-scroll" style={{flex:1, minHeight:0, padding:col ? '12px 6px' : '12px 10px', display:'flex', flexDirection:'column',
           gap:2, overflowY:'auto', overflowX:'hidden', position:'relative', zIndex:1}}>
-          {!col && <div style={{fontSize:'.9rem', fontWeight:700, color:'rgba(255,255,255,.35)',
-            letterSpacing:'.1em', textTransform:'uppercase', padding:'4px 12px 8px', marginTop:4}}>Modules</div>}
-          {NAV.map(({to, icon:Icon, label, sub, key}) => {
-            const allowed = canAccess(key)
-            return allowed ? (
-              <NavLink key={to} to={to} end={to==='/'} title={col ? label : undefined}
+          {(() => {
+            const SectionLabel = ({ text, first }) => (
+              <div style={{
+                fontSize:'.68rem', fontWeight:700, color:'rgba(255,255,255,.4)',
+                letterSpacing:'.08em', textTransform:'uppercase',
+                padding: col ? '10px 0 4px' : '10px 12px 4px',
+                marginTop: first ? 0 : 6, borderTop: first ? 'none' : '1px solid rgba(255,255,255,.08)',
+              }}>
+                {!col && text}
+              </div>
+            )
+
+            const overviewBody = <>
+              <LayoutDashboard size={23} strokeWidth={1.8} style={{flexShrink:0}}/>
+              {!col && <div style={{minWidth:0}}>
+                <div style={{fontSize:'.8rem', fontWeight:600, lineHeight:1.2}}>{HOME.label}</div>
+                <div style={{fontSize:'.6rem', opacity:.55, lineHeight:1.3, marginTop:1}}>{HOME.sub}</div>
+              </div>}
+            </>
+
+            const simpleLink = ({ to, icon:Icon, label, sub }) => (
+              <NavLink key={to} to={to} title={col ? label : undefined}
                 className={({isActive}) => `nav-item${isActive ? ' active' : ''}`}>
                 <Icon size={23} strokeWidth={1.8} style={{flexShrink:0}}/>
                 {!col && <div style={{minWidth:0}}>
@@ -169,58 +192,106 @@ export default function Layout() {
                   <div style={{fontSize:'.6rem', opacity:.55, lineHeight:1.3, marginTop:1}}>{sub}</div>
                 </div>}
               </NavLink>
-            ) : (
-              <div key={to} title={col ? label : undefined}
-                className="nav-item"
-                style={{opacity:.35, cursor:'not-allowed', pointerEvents:'none', userSelect:'none'}}>
-                <Icon size={23} strokeWidth={1.8} style={{flexShrink:0}}/>
-                {!col && <div style={{minWidth:0}}>
-                  <div style={{fontSize:'.8rem', fontWeight:600, lineHeight:1.2}}>{label}</div>
-                  <div style={{fontSize:'.6rem', opacity:.55, lineHeight:1.3, marginTop:1}}>🔒 No access</div>
-                </div>}
-              </div>
             )
-          })}
 
-          {/* Control Panel section — Setup visible to all; admin items for admin only */}
-          <div style={{
-            fontSize:'.9rem', fontWeight:700, color:'rgba(255,255,255,.35)',
-            letterSpacing:'.1em', textTransform:'uppercase',
-            padding: col ? '12px 0 6px' : '12px 12px 6px',
-            marginTop:8, borderTop:'1px solid rgba(255,255,255,.08)',
-            display:'flex', alignItems:'center', gap:6,
-          }}>
-            <Cpu size={13} style={{opacity:.6}}/>
-            {!col && 'Control Panel'}
-          </div>
+            // A single business/supporting domain row — click to expand/collapse its list of
+            // modules. A domain marked expandable:false is a single link straight to its own
+            // page, which shows all of that domain's modules as tabs (e.g. Accounting).
+            const renderDomain = ({ domain, items }) => {
+              const DomainIcon = ICONS[domain.icon] || BookOpen
+              const isCurrentDomain = domain.id === currentDomainId
+              const isOpen = openDomainId === domain.id
+              const activeId = activeLeafId(items, loc)
 
-          {/* Setup — always visible to all users */}
-          {CONTROL_PANEL_SETUP.map(({to, icon:Icon, label, sub}) => (
-            <NavLink key={to} to={to} title={col ? label : undefined}
-              className={({isActive}) => `nav-item${isActive ? ' active' : ''}`}>
-              <Icon size={23} strokeWidth={1.8} style={{flexShrink:0}}/>
-              {!col && <div style={{minWidth:0}}>
-                <div style={{fontSize:'.8rem', fontWeight:600, lineHeight:1.2}}>{label}</div>
-                <div style={{fontSize:'.6rem', opacity:.55, lineHeight:1.3, marginTop:1}}>{sub}</div>
-              </div>}
-            </NavLink>
-          ))}
+              if (domain.expandable === false) {
+                const landing = items.find(i => i.route) || items[0]
+                return (
+                  <NavLink key={domain.id} to={landing.route} title={col ? domain.name : undefined}
+                    data-testid={`domain-${domain.id}`}
+                    className={({isActive}) => `nav-item domain-row${isActive ? ' active' : ''}`}>
+                    <DomainIcon size={20} strokeWidth={1.8} style={{flexShrink:0}}/>
+                    {!col && <div style={{minWidth:0}}>
+                      <div className="domain-row-label">{domain.name}</div>
+                      {domain.tagline && <div className="domain-row-tagline">{domain.tagline}</div>}
+                    </div>}
+                  </NavLink>
+                )
+              }
 
-          {/* Admin tools — admin only */}
-          {isAdmin && (
-            <>
-              {CONTROL_PANEL.map(({to, icon:Icon, label, sub}) => (
-                <NavLink key={to} to={to} title={col ? label : undefined}
-                  className={({isActive}) => `nav-item${isActive ? ' active' : ''}`}>
-                  <Icon size={23} strokeWidth={1.8} style={{flexShrink:0}}/>
-                  {!col && <div style={{minWidth:0}}>
-                    <div style={{fontSize:'.8rem', fontWeight:600, lineHeight:1.2}}>{label}</div>
-                    <div style={{fontSize:'.6rem', opacity:.55, lineHeight:1.3, marginTop:1}}>{sub}</div>
-                  </div>}
-                </NavLink>
-              ))}
+              const handleDomainClick = () => {
+                if (col) {
+                  // Collapsed rail: no room to expand — jump straight to the domain's first available module
+                  const target = items.find(m => m.status !== 'planned' && canAccess(m.licence)) || items.find(m => m.status !== 'planned')
+                  if (target) nav(hrefOf(target))
+                  return
+                }
+                setOpenDomainId(prev => prev === domain.id ? null : domain.id)
+              }
+
+              return (
+                <div key={domain.id} className="domain-group">
+                  <button type="button" title={col ? domain.name : undefined} data-testid={`domain-${domain.id}`}
+                    onClick={handleDomainClick} className={`nav-item domain-row${isCurrentDomain ? ' active' : ''}${isOpen ? ' open' : ''}`}>
+                    <DomainIcon size={20} strokeWidth={1.8} style={{flexShrink:0}}/>
+                    {!col && <span className="domain-row-label">{domain.name}</span>}
+                    {!col && <ChevronRight size={14} strokeWidth={2} className="domain-chevron"
+                      style={{transform: isOpen ? 'rotate(90deg)' : 'none'}}/>}
+                  </button>
+
+                  {!col && isOpen && (
+                    <div className="domain-submenu" data-testid={`domain-submenu-${domain.id}`}>
+                      {items.map(leaf => {
+                        const planned = leaf.status === 'planned'
+                        const allowed = !planned && canAccess(leaf.licence)
+                        const isLeafActive = activeId === leaf.id
+
+                        if (planned || !allowed) return (
+                          <div key={leaf.id} className="nav-subitem disabled"
+                            title={planned ? `Coming ${leaf.phase ? 'in ' + leaf.phase : 'soon'}` : '🔒 Not in your plan'}>
+                            <span className="nav-subitem-dot"/>
+                            <span className="nav-subitem-label">{leaf.name}</span>
+                            {planned && <span className="soon-tag">Soon</span>}
+                            {!planned && !allowed && <Lock size={10} style={{flexShrink:0, opacity:.6}}/>}
+                          </div>
+                        )
+
+                        return (
+                          <NavLink key={leaf.id} to={hrefOf(leaf)}
+                            className={() => `nav-subitem${isLeafActive ? ' active' : ''}`}>
+                            <span className="nav-subitem-dot"/>
+                            <span className="nav-subitem-label">{leaf.name}</span>
+                          </NavLink>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            const visibleDomains = visibleGroups(domainGroups(), isDomainVisible, isModuleVisible)
+            const businessDomains   = visibleDomains.filter(g => g.domain.section !== 'supporting')
+            const supportingDomains = visibleDomains.filter(g => g.domain.section === 'supporting')
+
+            return <>
+              <SectionLabel text="Platform" first/>
+              <NavLink to={HOME.to} end title={col ? HOME.label : undefined} data-testid="nav-overview"
+                className={({isActive}) => `nav-item${isActive ? ' active' : ''}`}>{overviewBody}</NavLink>
+
+              {businessDomains.length > 0 && <SectionLabel text="Business Modules"/>}
+              {businessDomains.map(renderDomain)}
+
+              {/* Settings lives here too, so this section always shows even if Practice is hidden */}
+              <SectionLabel text="Supporting Modules"/>
+              {supportingDomains.map(renderDomain)}
+              {simpleLink(SETTINGS_ITEM)}
+
+              {isAdmin && <>
+                <SectionLabel text="Admin"/>
+                {simpleLink(ADMIN_ITEM)}
+              </>}
             </>
-          )}
+          })()}
         </nav>
 
         {/* Collapse toggle */}
@@ -241,7 +312,7 @@ export default function Layout() {
           userName={userName}
           onLogout={handleLogout}
         />
-        <main style={{flex:1, padding:'24px 28px', overflowY:'auto'}}><ReconciliationContext.Provider value={reconCtx}><Outlet/></ReconciliationContext.Provider></main>
+        <main style={{flex:1, padding:'24px 28px', overflowY:'auto'}}><ReconciliationContext.Provider value={reconCtx}><Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text-3)'}}>Loading…</div>}><Outlet/></Suspense></ReconciliationContext.Provider></main>
       </div>
     </div>
     </>

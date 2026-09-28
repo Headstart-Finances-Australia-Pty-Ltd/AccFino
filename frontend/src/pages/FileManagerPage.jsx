@@ -1002,7 +1002,7 @@ export default function FileManagerPage() {
     <div>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
         <div>
-          <h2 style={{margin:0}}>File Manager</h2>
+          <h2 style={{margin:0}}>Data Manager</h2>
           <p style={{color:'var(--text-3)',fontSize:'.85rem',margin:'4px 0 0'}}>
             Browse and edit files, and every table in the application database
           </p>

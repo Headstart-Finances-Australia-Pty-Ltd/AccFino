@@ -16,7 +16,7 @@
  *   onLogout        () => void
  */
 import React from 'react'
-import { LogOut } from 'lucide-react'
+import { LogOut, Home } from 'lucide-react'
 
 const NAV_LINKS = [
   { label: 'Features',     href: '/index-marketing.html#features'     },
@@ -151,8 +151,14 @@ export default function TopBar({ variant = 'marketing', onSignIn, onStartFree, p
     {userName}
   </span>
 </div>
-{/* Logout — right */}
-<div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
+{/* Home (public landing page) + Logout — right */}
+<div style={{ display: 'flex', alignItems: 'center', gap: 20, marginLeft: 'auto' }}>
+  <a href="/index-marketing.html" style={{
+    fontSize: '.9rem', fontWeight: 700, color: 'var(--text-1)', fontFamily: 'inherit',
+    display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none',
+  }}>
+    <Home size={20} color="var(--brand)"/> Home
+  </a>
   <button onClick={onLogout} style={{
     background: 'none', border: 'none', cursor: 'pointer',
     fontSize: '.9rem', fontWeight: 700, color: 'var(--text-1)', fontFamily: 'inherit',

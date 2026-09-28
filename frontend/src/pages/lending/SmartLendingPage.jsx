@@ -939,9 +939,12 @@ export default function SmartLendingPage() {
 
   return (
     <div style={{padding:24}}>
-      <div style={{marginBottom:18}}>
-        <h1>🏦 Smart Lending</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.88rem'}}>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <TrendingUp size={22} />
+          <h2 style={{margin:0}}>Smart Lending</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Upload bank statements · AI transaction extraction · Expense classification · Australian Responsible Lending (ASIC RG 209 · APRA · HEM)
         </p>
       </div>

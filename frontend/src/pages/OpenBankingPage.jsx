@@ -1,11 +1,89 @@
 import React, { useState, useEffect } from 'react'
-import { obStatus, obCreateUser, obAccounts, obTransactions } from '../lib/api.js'
-import { Landmark, RefreshCw, Users, CreditCard } from 'lucide-react'
+import { obStatus, obCreateUser, obAccounts, obTransactions,
+         openfeedStatus, openfeedSaveConfig, openfeedGenerateKeys, openfeedConnect, openfeedDisconnect } from '../lib/api.js'
+import { Landmark, RefreshCw, Users, CreditCard, Link2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useModuleVisibility } from '../hooks/useModuleVisibility.jsx'
 
 const fmtAUD = n => n==null?'—':new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD'}).format(n)
 
+// Settings > Open Banking - two providers, each its own tab. Basiq is the
+// original CDR integration; openfeed is an additional live bank-feed option.
+// Square used to live here too, but it's a card-payment/API integration
+// rather than a bank feed, so its setup moved to Settings > Payment Setup
+// (see SquarePanel in components/payments/). Every provider can be switched
+// off platform-wide from Admin > Modules Management (basiq-open-banking / openfeed-open-banking).
+function OpenfeedPanel() {
+  const [st, setSt] = useState(null)
+  const [busy, setBusy] = useState('')
+  const [form, setForm] = useState({ client_id:'', app_id:'' })
+
+  const load = () => openfeedStatus().then(r=>{ setSt(r.data); setForm({ client_id:r.data.clientId||'', app_id:r.data.appId||'' }) }).catch(()=>setSt(null))
+  useEffect(() => { load() }, [])
+
+  const act = async (name, fn) => {
+    setBusy(name)
+    try { await fn() } catch (e) { toast.error(e.response?.data?.detail || 'Failed') }
+    finally { setBusy(''); load() }
+  }
+  const genKeys  = () => act('keys', async () => { await openfeedGenerateKeys(); toast.success('Keys generated') })
+  const saveIds  = () => act('ids',  async () => { await openfeedSaveConfig(form); toast.success('App details saved') })
+  const connect  = () => act('connect', async () => { await openfeedConnect(); toast.success('Connected — bank account shared') })
+  const disconnect = () => act('disconnect', async () => { if (!confirm('Disconnect the live bank feed?')) return; await openfeedDisconnect(); toast.success('Disconnected') })
+
+  if (!st) return <div className="empty-state" style={{padding:40}}><p>Loading…</p></div>
+
+  const step = (n, done, title, body) => (
+    <div style={{display:'flex',gap:12,marginBottom:16}}>
+      <span style={{flexShrink:0,width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.72rem',fontWeight:700,background:done?'var(--success)':'var(--surface-3)',color:done?'#fff':'var(--text-3)'}}>{done?'✓':n}</span>
+      <div><div style={{fontWeight:600,marginBottom:4}}>{title}</div><div style={{fontSize:'.82rem',color:'var(--text-2)'}}>{body}</div></div>
+    </div>
+  )
+
+  return (
+    <div style={{maxWidth:640}}>
+      <div className="card">
+        <h3 style={{marginBottom:6}}><Link2 size={16} style={{display:'inline',marginRight:6,verticalAlign:'middle'}}/>OpenFeed — live bank feed (CDR)</h3>
+        <p style={{fontSize:'.8rem',color:'var(--text-2)',marginBottom:18}}>
+          Pulls transactions straight from your bank through <strong>openfeed</strong>, an accredited Consumer Data Right provider — no
+          statement files needed. Read-only: nothing can be paid out of the account.
+        </p>
+
+        {step(1, st.hasKeys, 'Create the platform\'s keys', (
+          <button className="btn btn-outline btn-sm" onClick={genKeys} disabled={!!busy}>{st.hasKeys?'Replace keys':'Generate keys'}</button>
+        ))}
+        {step(2, st.hasIds, 'Register the app with openfeed', (
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <input className="input input-sm" placeholder="OAuth2 Client ID" value={form.client_id} onChange={e=>setForm(f=>({...f,client_id:e.target.value}))}/>
+            <input className="input input-sm" placeholder="App ID" value={form.app_id} onChange={e=>setForm(f=>({...f,app_id:e.target.value}))}/>
+            <button className="btn btn-outline btn-sm" onClick={saveIds} disabled={!!busy}>Save app details</button>
+          </div>
+        ))}
+        {step(3, st.connected, 'Connect the bank account', (
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-primary btn-sm" onClick={connect} disabled={!!busy || !st.hasKeys || !st.hasIds}>{st.connected?'Re-connect':'Connect'}</button>
+            {st.connected && <button className="btn btn-ghost btn-sm" onClick={disconnect} disabled={!!busy}>Disconnect</button>}
+          </div>
+        ))}
+        {st.connected && (
+          <div style={{marginTop:8,padding:12,background:'var(--surface-2)',borderRadius:'var(--r-md)',fontSize:'.8rem'}}>
+            Account: <strong>{st.accountLabel || '—'}</strong>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function OpenBankingPage() {
+  const { isModuleVisible } = useModuleVisibility()
+  const PROVIDERS = [
+    { key:'basiq',    label:'Basiq',    moduleId:'basiq-open-banking' },
+    { key:'openfeed', label:'OpenFeed', moduleId:'openfeed-open-banking' },
+  ].filter(p => isModuleVisible(p.moduleId))
+  const [provider, setProvider] = useState('basiq')
+  useEffect(() => { if (!PROVIDERS.find(p=>p.key===provider) && PROVIDERS[0]) setProvider(PROVIDERS[0].key) }, [PROVIDERS.map(p=>p.key).join(',')])
+
   const [status,   setStatus]   = useState(null)
   const [userId,   setUserId]   = useState('')
   const [userForm, setUserForm] = useState({email:'',mobile:'',first_name:'',last_name:''})
@@ -52,11 +130,25 @@ export default function OpenBankingPage() {
 
   return (
     <div className="fade-in">
-      <div style={{marginBottom:22}}>
-        <h1>🏛️ Open Banking</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>Connect to your bank accounts via the Basiq CDR API for real-time transaction data</p>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <Landmark size={22} />
+          <h2 style={{margin:0}}>Open Banking</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>Connect bank accounts via Basiq or openfeed for real-time transaction data</p>
       </div>
 
+      {PROVIDERS.length > 1 && (
+        <div className="tabs-bar" style={{marginBottom:20}}>
+          {PROVIDERS.map(p => (
+            <button key={p.key} className={`tab-btn${provider===p.key?' active':''}`} onClick={()=>setProvider(p.key)}>{p.label}</button>
+          ))}
+        </div>
+      )}
+
+      {provider === 'openfeed' && <OpenfeedPanel />}
+
+      {provider === 'basiq' && <>
       {/* Status banner */}
       {status && (
         <div className={`alert ${status.configured?'alert-success':status.available?'alert-warning':'alert-error'}`} style={{marginBottom:20}}>
@@ -188,6 +280,7 @@ export default function OpenBankingPage() {
           )}
         </div>
       </div>
+      </>}
     </div>
   )
 }

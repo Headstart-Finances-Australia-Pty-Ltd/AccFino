@@ -5,7 +5,9 @@
  */
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { homeGroups, visibleGroups, STATUS_LABEL } from '../lib/modules.js'
 import { useAuth } from '../hooks/useAuth.jsx'
+import { useModuleVisibility } from '../hooks/useModuleVisibility.jsx'
 import { licenceMyModules, getMyPlan } from '../lib/api.js'
 import {
   BookOpen, TrendingUp, Users, Settings, Lock,
@@ -13,80 +15,20 @@ import {
 } from 'lucide-react'
 
 /* ── Module catalogue grouped by category ──────────────────────────────────── */
-const CATEGORIES = [
-  {
-    key:   'accounting',
-    icon:  '🏦',
-    label: 'Accounting',
-    color: 'var(--brand)',
-    bg:    'var(--brand-xlight,#eff6ff)',
-    border:'#bfdbfe',
-    modules: [
-      { key:'accounting', icon:'📊', label:'Dashboard',          desc:'KPI overview · sessions · income & expense totals',    to:'/accounting', tab:'dashboard'      },
-      { key:'accounting', icon:'🔀', label:'Reconciliation',     desc:'Bank CSV · Open Banking · GL & GST auto-classification', to:'/accounting', tab:'reconciliation' },
-      { key:'accounting', icon:'💼', label:'Sales',              desc:'Customers · Quotes · Tax Invoices · save to DB',        to:'/accounting', tab:'sales'          },
-      { key:'accounting', icon:'🧾', label:'Purchases',          desc:'Suppliers · Purchase Orders · Bills · Receipts · OCR',  to:'/accounting', tab:'purchases'      },
-      { key:'cash-flow',  icon:'📈', label:'Cash Flow',          desc:'ML forecast · 17 models · DB data source',              to:'/accounting', tab:'cashflow'       },
-      { key:'accounting', icon:'📋', label:'Financial Reports',  desc:'P&L · Balance Sheet · Aged Receivables · GST/BAS · 20+ reports', to:'/accounting', tab:'reports' },
-    ],
-  },
-  {
-    key:   'trading',
-    icon:  '🧾',
-    label: 'Taxation & Trading',
-    color: '#7c3aed',
-    bg:    '#f5f3ff',
-    border:'#ddd6fe',
-    modules: [
-      { key:'trading', icon:'₿',  label:'Crypto CGT',      desc:'Capital gains tax for crypto assets',         to:'/trading' },
-      { key:'trading', icon:'📊', label:'Stock / Equity CGT', desc:'Capital gains for shares & ETFs — ATO compliant', to:'/trading' },
-      { key:'trading', icon:'🏠', label:'Property CGT',    desc:'Property capital gains · main residence exemption', to:'/trading' },
-      { key:'trading', icon:'🗂', label:'Tax Return Data', desc:'Full Australian ITR · all income, deductions, offsets', to:'/trading' },
-    ],
-  },
-  {
-    key:   'payroll',
-    icon:  '👔',
-    label: 'Payroll',
-    color: '#0891b2',
-    bg:    '#ecfeff',
-    border:'#a5f3fc',
-    modules: [
-      { key:'payroll', icon:'👥', label:'Employees',    desc:'Employee master · super · banking',      to:'/payroll' },
-      { key:'payroll', icon:'⏱', label:'Timesheets',   desc:'Hours · leave · overtime tracking',      to:'/payroll' },
-      { key:'payroll', icon:'💸', label:'Payroll Runs', desc:'PAYG · super · payslip generation',      to:'/payroll' },
-      { key:'payroll', icon:'🏛', label:'STP / ATO',   desc:'STP Phase 2 · ATO compliance reporting',  to:'/payroll' },
-    ],
-  },
-  {
-    key:   'lending',
-    icon:  '🏦',
-    label: 'Smart Lending',
-    color: '#0891b2',
-    bg:    '#ecfeff',
-    border:'#a5f3fc',
-    modules: [
-      { key:'lending', icon:'📤', label:'Upload Statement',      desc:'PDF · image · CSV bank statement extraction',         to:'/lending' },
-      { key:'lending', icon:'🗂', label:'Transaction Analysis',  desc:'AI classification into 40+ expense categories',       to:'/lending' },
-      { key:'lending', icon:'📊', label:'Lending Metrics',       desc:'NDI · UMI · DSR · HEM · LTI · risk score',           to:'/lending' },
-      { key:'lending', icon:'🏛', label:'Serviceability Check',  desc:'ASIC RG 209 · APRA buffer · max borrowing capacity',  to:'/lending' },
-    ],
-  },
-  {
-    key:   'setup',
-    icon:  '⚙️',
-    label: 'Control Panel · Setup',
-    color: '#6b7280',
-    bg:    '#f9fafb',
-    border:'#e5e7eb',
-    modules: [
-      { key:'setup', icon:'🏢', label:'Business Account', desc:'Business name · ABN · GST · banking details', to:'/setup' },
-      { key:'setup', icon:'📋', label:'Chart of Accounts', desc:'GL accounts · tax codes · COA management',   to:'/setup' },
-      { key:'setup', icon:'⚙️', label:'Business Rules',   desc:'RDR classification rules engine',            to:'/setup' },
-      { key:'setup', icon:'📚', label:'Knowledge Base',   desc:'Vendor map · keyword classification map',     to:'/setup' },
-    ],
-  },
+// Home page cards come from the module registry (src/config/modules.json) - the same source as
+// the side panel and the public landing page - so they can't drift apart.
+const PALETTE = [
+  { color:'var(--brand)', bg:'var(--brand-xlight,#eff6ff)', border:'#bfdbfe' },
+  { color:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe' },
+  { color:'#059669', bg:'#ecfdf5', border:'#a7f3d0' },
+  { color:'#d97706', bg:'#fffbeb', border:'#fde68a' },
 ]
+const buildCategories = (isDomainVisible, isModuleVisible) =>
+  visibleGroups(homeGroups(), isDomainVisible, isModuleVisible).map(({ domain, items }, n) => ({
+    key: domain.id, icon: domain.emoji, label: domain.name, blurb: domain.blurb, ...PALETTE[n % PALETTE.length],
+    modules: items.map(m => ({ key: m.licence, icon: m.emoji, label: m.name, desc: m.blurb, to: m.route, tab: m.tab,
+                   status: m.status, phase: m.phase, plans: m.plans })),
+  }))
 
 const PLAN_LABELS = {
   base:    { label:'Vault Plan',    color:'#6b7280', emoji:'🔒' },
@@ -100,6 +42,8 @@ export default function OverviewPage() {
   const [myPlan,    setMyPlan]    = useState(null)
   const [modules,   setModules]   = useState(null)
   const isAdmin = (Array.isArray(user?.roles) && user.roles.includes('admin')) || user?.is_admin === true
+  const { isDomainVisible, isModuleVisible } = useModuleVisibility()
+  const CATEGORIES = buildCategories(isDomainVisible, isModuleVisible)
 
   useEffect(() => {
     if (!user?.id) return
@@ -158,7 +102,7 @@ export default function OverviewPage() {
               Welcome back, {firstName} 👋
             </h1>
             <p style={{color:'rgba(255,255,255,.55)',fontSize:'.875rem',margin:0}}>
-              AccFino financial platform · Your modules are ready
+              AccFino financial platform · Your modules by business area
             </p>
           </div>
 
@@ -206,7 +150,9 @@ export default function OverviewPage() {
 
       {/* ── Module categories ───────────────────────────────────────────────── */}
       {CATEGORIES.map(cat => {
-        const access = canAccess(cat.key)
+        const available = cat.modules.filter(m => m.status !== 'planned')
+        const access = available.some(m => canAccess(m.key))
+        const allPlanned = available.length === 0
         return (
           <div key={cat.key} style={{marginBottom:28}}>
             {/* Category header */}
@@ -217,7 +163,9 @@ export default function OverviewPage() {
                 display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',
               }}>{cat.icon}</div>
               <h2 style={{margin:0,fontSize:'1.05rem',fontWeight:700,color:'var(--text-1)'}}>{cat.label}</h2>
-              {!access && (
+              <span style={{fontSize:'.75rem',color:'var(--text-3)'}}>{cat.blurb}</span>
+              {allPlanned && <span className="badge badge-neutral">{STATUS_LABEL.planned}</span>}
+              {!access && !allPlanned && (
                 <span style={{
                   display:'flex',alignItems:'center',gap:4,fontSize:'.7rem',fontWeight:700,
                   color:'#9ca3af',padding:'2px 8px',borderRadius:100,
@@ -231,10 +179,12 @@ export default function OverviewPage() {
             {/* Module cards */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(210px,1fr))',gap:10}}>
               {cat.modules.map((mod, i) => {
-                const modAccess = canAccess(mod.key)
+                const planned = mod.status === 'planned'
+                const modAccess = !planned && canAccess(mod.key)
                 return (
-                <button key={i}
-                  onClick={() => modAccess && nav(mod.to, mod.tab ? { state: { tab: mod.tab } } : undefined)}
+                <button key={i} data-testid={`home-${mod.label}`}
+                  title={planned ? `${STATUS_LABEL.planned}${mod.phase ? ' - ' + mod.phase : ''}` : undefined}
+                  onClick={() => modAccess && nav(mod.tab ? `${mod.to}?tab=${mod.tab}` : mod.to, mod.tab ? { state: { tab: mod.tab } } : undefined)}
                   disabled={!modAccess}
                   style={{
                     display:'flex',alignItems:'flex-start',gap:12,
@@ -245,7 +195,8 @@ export default function OverviewPage() {
                     textAlign:'left',fontFamily:'inherit',
                     transition:'border-color .15s, box-shadow .15s, transform .15s',
                     boxShadow:'var(--sh-xs)',
-                    opacity: modAccess ? 1 : 0.45,
+                    opacity: modAccess ? 1 : planned ? 0.7 : 0.45,
+                    borderStyle: planned ? 'dashed' : 'solid',
                   }}
                   onMouseEnter={e=>{ if(modAccess){
                     e.currentTarget.style.borderColor=cat.color
@@ -267,10 +218,16 @@ export default function OverviewPage() {
                     <div style={{fontSize:'.72rem',color:'var(--text-3)',lineHeight:1.4}}>
                       {mod.desc}
                     </div>
+                    {(planned || mod.status === 'beta' || mod.plans) && (
+                      <div style={{marginTop:6,display:'flex',gap:4,flexWrap:'wrap'}}>
+                        {planned && <span className="badge badge-neutral">{STATUS_LABEL.planned}{mod.phase ? ` · ${mod.phase}` : ''}</span>}
+                        {mod.status === 'beta' && <span className="badge badge-info">{STATUS_LABEL.beta}</span>}
+                        {mod.plans && !planned && <span className="badge badge-neutral">{mod.plans}</span>}
+                      </div>)}
                   </div>
                   {modAccess
                     ? <ChevronRight size={14} color="var(--text-3)" style={{flexShrink:0,marginTop:2}}/>
-                    : <Lock size={12} color="#9ca3af" style={{flexShrink:0,marginTop:2}}/>
+                    : planned ? null : <Lock size={12} color="#9ca3af" style={{flexShrink:0,marginTop:2}}/>
                   }
                 </button>
                 )
@@ -290,7 +247,7 @@ export default function OverviewPage() {
         <Shield size={14} color="var(--brand)"/>
         <span>All data is encrypted and stored securely on your PostgreSQL database.</span>
         <span style={{marginLeft:'auto',color:'var(--text-3)'}}>
-          AccFino v1.2.0 · <a href="/setup" style={{color:'var(--brand)',textDecoration:'none'}}>Settings</a>
+          AccFino v1.2.0 · <a href="/settings/setup" style={{color:'var(--brand)',textDecoration:'none'}}>Settings</a>
         </span>
       </div>
     </div>

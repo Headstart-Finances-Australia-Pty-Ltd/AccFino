@@ -67,9 +67,12 @@ export default function StockTrading() {
 
   return (
     <div className="fade-in">
-      <div style={{marginBottom:22}}>
-        <h1>📊 Stock / Equity Trading Analysis</h1>
-        <p style={{color:'var(--text-3)',marginTop:4,fontSize:'.9rem'}}>
+      <div style={{marginBottom:16}}>
+        <div className="flex items-center gap-1">
+          <BarChart2 size={22} />
+          <h2 style={{margin:0}}>Stock / Equity Trading Analysis</h2>
+        </div>
+        <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Upload broker files · ATO-compliant CGT · CGT discount · tax report · export Excel
         </p>
       </div>
