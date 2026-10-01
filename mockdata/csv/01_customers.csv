@@ -1,0 +1,13 @@
+name,email,phone,abn,address,terms_days,credit_limit,default_account,default_tax_code,notes
+Bondi Beach Cafe Group Pty Ltd,accounts@bondicafe.example,02 9365 1100,51 824 753 556,"14 Campbell Parade, Bondi Beach NSW 2026",14,15000,200,OUTPUT,Mock data
+Harbour Legal Partners,finance@harbourlegal.example,02 9221 4400,82 310 482 977,"Level 12, 45 Clarence St, Sydney NSW 2000",30,40000,200,OUTPUT,Mock data
+Northshore Dental Clinic Pty Ltd,admin@northshoredental.example,02 9436 7788,14 651 203 988,"8 Pacific Hwy, St Leonards NSW 2065",14,12000,200,OUTPUT,Mock data
+Parramatta Logistics Pty Ltd,ap@parralogistics.example,02 9635 2200,43 447 860 213,"120 Church St, Parramatta NSW 2150",30,50000,200,OUTPUT,Mock data
+Redfern Design Studio,studio@redferndesign.example,02 9699 3010,30 207 714 356,"33 Redfern St, Redfern NSW 2016",14,8000,200,OUTPUT,Mock data
+Blue Mountains Tourism Ltd,payables@bmtourism.example,02 4782 5500,46 931 580 427,"9 Katoomba St, Katoomba NSW 2780",30,25000,200,OUTPUT,Mock data
+Coastal Builders Pty Ltd,office@coastalbuilders.example,02 4229 8800,79 568 341 092,"77 Keira St, Wollongong NSW 2500",30,30000,200,OUTPUT,Mock data
+Kiama Wholesale Foods Pty Ltd,accounts@kiamafoods.example,02 4232 6100,82 720 965 431,"5 Terralong St, Kiama NSW 2533",14,20000,200,OUTPUT,Mock data
+Sydney Sports Academy,admin@sydneysportsacademy.example,02 9744 9090,48 386 907 125,"60 Olympic Blvd, Sydney Olympic Park NSW 2127",14,10000,200,OUTPUT,Mock data
+Wollongong Medical Centre,manager@wollmedical.example,02 4228 3300,84 153 207 846,"21 Crown St, Wollongong NSW 2500",30,30000,200,OUTPUT,Mock data
+Darlinghurst Hotel Group Pty Ltd,finance@darlohotels.example,02 9331 7700,69 694 052 318,"200 Oxford St, Darlinghurst NSW 2010",30,35000,200,OUTPUT,Mock data
+Penrith Auto Group Pty Ltd,accounts@penrithauto.example,02 4731 2400,18 275 418 093,"300 High St, Penrith NSW 2750",14,18000,200,OUTPUT,Mock data

@@ -1,0 +1,5 @@
+number,customer,issue_date,due_date,reference,amounts_are,status,line_description,qty,unit_price,discount_pct,account,tax_code,notes,apply_to,apply_amount
+CN-0001,Wollongong Medical Centre,2025-10-23,,,exclusive,approved,Credit: service adjustment on INV-0036,1,285.00,,200,OUTPUT,,INV-0036,313.50
+CN-0002,Harbour Legal Partners,2026-02-23,,,exclusive,approved,Credit: service adjustment on INV-0084,1,627.00,,200,OUTPUT,,INV-0084,689.70
+CN-0003,Harbour Legal Partners,2026-04-13,,,exclusive,approved,Credit: service adjustment on INV-0099,1,113.55,,200,OUTPUT,,,
+CN-0004,Parramatta Logistics Pty Ltd,2026-06-02,,,exclusive,approved,Credit: service adjustment on INV-0127,1,540.00,,200,OUTPUT,,INV-0127,594.00

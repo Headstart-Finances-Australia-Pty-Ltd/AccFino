@@ -1,0 +1,18 @@
+backend/accfino_core/security/contact.py
+backend/accfino_core/org_admin.py
+backend/accfino_core/notifications.py
+backend/accfino_core/models.py, config.py, migrate.py
+backend/accfino_core/security/context.py, iam.py, middleware.py
+backend/accfino_core/api/org.py, signup_api.py, auth_ext.py, iam_api.py, org_identity.py, subscription_api.py
+backend/accfino_core/tenancy/service.py, seed_demo.py
+backend/db_app/models/user.py, db_app/api/auth.py, db_app/init_db.py, main_app/react_api.py
+frontend/src: lib/contact.js (+test), hooks/useOrgRole.jsx, pages/MyAccountPage.jsx, components/signup/SignupFlow.jsx, InviteManager.jsx,
+  components/layout/Layout.jsx, App.jsx, lib/platformApi.js, lib/authFetch.js, pages/settings/OrganisationPage.jsx, IAMSetupPage.jsx, OrgIdentityPage.jsx
+tests: AccFino_Testing_additions/org_admin_test.py (new), tenancy_test.py (updated); frontend Signup.test.jsx (updated), OrgAdminUi.test.jsx (new)
+docs: docs/ORG_ADMIN.md (new), docs/TENANCY.md, .env.example
+
+-- verification, address visibility, browser testing --
+backend/accfino_core/security/contact_verify.py (new), models.py + migrate.py (verified-at columns), api/signup_api.py, api/auth_ext.py, security/middleware.py (public routes, admin-only legacy settings routes)
+backend/main_app/react_api.py (StaticAssetsFirst fix; clean 422 for invalid contact edits)
+frontend/src/components/signup/ContactVerifier.jsx (new), SignupFlow.jsx, pages/MyAccountPage.jsx, components/layout/Layout.jsx (org name + address at top of sidebar), lib/booksApi.js, lib/platformApi.js
+AccFino_Testing_additions/contact_verify_test.py (new), browser_e2e/ (new: wildcard API test, browser journey, certificate script, README)

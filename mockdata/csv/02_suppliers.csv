@@ -1,0 +1,15 @@
+name,email,phone,abn,address,terms_days,default_account,default_tax_code,notes
+Harbourside Property Trust,rent@harbourside.example,02 9252 1200,10 412 907 365,"Level 3, 10 Bridge St, Sydney NSW 2000",7,469,INPUT,Mock data
+TeleConnect Australia Pty Ltd,billing@teleconnect.example,1300 555 010,92 733 190 584,"PO Box 500, Sydney NSW 2001",14,489,INPUT,Mock data
+PowerGrid Energy Pty Ltd,accounts@powergrid.example,13 15 15,84 598 316 720,"GPO Box 77, Sydney NSW 2001",14,445,INPUT,Mock data
+SecureCover Insurance Brokers Pty Ltd,premiums@securecover.example,02 9299 4500,52 871 245 093,"Level 8, 1 Martin Pl, Sydney NSW 2000",14,620,INPUT,Mock data
+CloudSoft Licensing Pty Ltd,billing@cloudsoft.example,02 8003 9900,37 246 809 135,"5 Talavera Rd, Macquarie Park NSW 2113",14,485,INPUT,Mock data
+TechSource Distribution Pty Ltd,orders@techsource.example,02 9748 6600,22 360 412 879,"40 Parramatta Rd, Lidcombe NSW 2141",30,310,INPUT,Mock data
+Vision AV Solutions Pty Ltd,accounts@visionav.example,02 9905 2200,19 915 627 340,"12 Chandos St, St Leonards NSW 2065",14,710,INPUT,Mock data
+Fenwick & Associates Accountants,fees@fenwickaccountants.example,02 9223 8800,23 183 059 642,"Level 5, 70 Pitt St, Sydney NSW 2000",14,412,INPUT,Mock data
+Spark Digital Marketing Pty Ltd,invoices@sparkdigital.example,02 9699 5150,49 629 174 835,"Suite 4, 88 Cleveland St, Chippendale NSW 2008",14,401,INPUT,Mock data
+Paper & Pixel Office Supplies,sales@paperpixel.example,02 9555 0100,69 507 381 926,"19 Parramatta Rd, Camperdown NSW 2050",14,453,INPUT,Mock data
+SwiftCourier Express Pty Ltd,accounts@swiftcourier.example,1300 794 388,29 842 096 173,"Unit 7, 50 Sydney Park Rd, Alexandria NSW 2015",14,425,INPUT,Mock data
+Codeforge Contracting Pty Ltd,billing@codeforge.example,02 9188 4040,29 174 539 068,"Level 2, 30 Hunter St, Newcastle NSW 2300",14,313,INPUT,Mock data
+Metro Motors Pty Ltd,fleet@metromotors.example,02 9647 3300,90 395 718 240,"500 Pacific Hwy, Artarmon NSW 2064",14,730,INPUT,Mock data
+Green Clean Services Pty Ltd,hello@greenclean.example,0412 555 880,11 460 827 391,"PO Box 12, Marrickville NSW 2204",14,408,INPUT,Mock data

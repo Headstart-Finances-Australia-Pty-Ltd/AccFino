@@ -1,0 +1,3 @@
+number,supplier,issue_date,due_date,reference,amounts_are,status,line_description,qty,unit_price,discount_pct,account,tax_code,notes,apply_to,apply_amount
+SC-0001,CloudSoft Licensing Pty Ltd,2025-11-13,,CR-3689,exclusive,approved,Credit: seat true-up on BILL-0034,1,154.00,,485,INPUT,,BILL-0034,169.40
+SC-0002,CloudSoft Licensing Pty Ltd,2026-03-10,,CR-7471,exclusive,approved,Credit: seat true-up on BILL-0064,1,154.00,,485,INPUT,,,

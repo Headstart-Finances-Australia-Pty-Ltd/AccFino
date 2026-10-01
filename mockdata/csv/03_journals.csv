@@ -1,0 +1,303 @@
+Date,Narration,Reference,Account,Description,Debit,Credit
+2025-07-01,Opening balances,OPEN,090,Opening bank balance,85000.00,
+,,,710,Office furniture and fittings - cost,14400.00,
+,,,720,Laptops and workstations (staff) - cost,9600.00,
+,,,720,Server and network equipment - cost,7500.00,
+,,,730,Toyota HiLux service vehicle - cost,42000.00,
+,,,710,Large-format plotter / printer - cost,5200.00,
+,,,711,Accumulated depreciation b/f,,6306.67
+,,,721,Accumulated depreciation b/f,,4366.67
+,,,731,Accumulated depreciation b/f,,5666.67
+,,,900,Business loan balance b/f,,40000.00
+,,,970,Share capital,,10000.00
+,,,960,Retained earnings b/f (balancing figure),,97359.99
+2025-07-15,Business loan repayment Jul 2025,,900,Principal,1000.00,
+,,,437,Interest,298.33,
+,,,090,Loan repayment,,1298.33
+2025-07-31,Pay run July 2025,PAY-202507,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2025-07-31,Insurance - release prepayment Jul 2025,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2025-07-31,Depreciation July 2025,DEP-202507,416,Depreciation,952.49,
+,,,711,Accumulated depreciation,,206.66
+,,,721,Accumulated depreciation,,412.50
+,,,731,Accumulated depreciation,,333.33
+2025-07-31,Bank fees Jul 2025,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2025-08-15,Business loan repayment Aug 2025,,900,Principal,1000.00,
+,,,437,Interest,290.88,
+,,,090,Loan repayment,,1290.88
+2025-08-21,PAYG withholding remitted - July 2025,,825,PAYG Jul 2025,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2025-08-29,Pay run August 2025,PAY-202508,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2025-08-29,Bank fees Aug 2025,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2025-08-31,Insurance - release prepayment Aug 2025,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2025-08-31,Depreciation August 2025,DEP-202508,416,Depreciation,952.49,
+,,,711,Accumulated depreciation,,206.67
+,,,721,Accumulated depreciation,,412.49
+,,,731,Accumulated depreciation,,333.33
+2025-09-15,Business loan repayment Sep 2025,,900,Principal,1000.00,
+,,,437,Interest,283.42,
+,,,090,Loan repayment,,1283.42
+2025-09-22,PAYG withholding remitted - August 2025,,825,PAYG Aug 2025,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2025-09-30,Pay run September 2025,PAY-202509,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2025-09-30,Insurance - release prepayment Sep 2025,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2025-09-30,Depreciation September 2025,DEP-202509,416,Depreciation,952.52,
+,,,711,Accumulated depreciation,,206.67
+,,,721,Accumulated depreciation,,412.51
+,,,731,Accumulated depreciation,,333.34
+2025-09-30,Bank fees Sep 2025,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2025-09-30,Interest received Sep 2025,,090,Interest,19.54,
+,,,270,Interest income,,19.54
+2025-10-15,Business loan repayment Oct 2025,,900,Principal,1000.00,
+,,,437,Interest,275.96,
+,,,090,Loan repayment,,1275.96
+2025-10-21,PAYG withholding remitted - September 2025,,825,PAYG Sep 2025,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2025-10-28,Superannuation contributions - quarter from Jul 2025,,826,Super remitted,6300.00,
+,,,090,Super clearing house,,6300.00
+2025-10-28,BAS payment - quarter from Jul 2025,BAS-202507,820,GST payable settled,6271.78,
+,,,090,Paid to ATO,,6271.78
+2025-10-31,Pay run October 2025,PAY-202510,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2025-10-31,Insurance - release prepayment Oct 2025,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2025-10-31,Depreciation October 2025,DEP-202510,416,Depreciation,952.49,
+,,,711,Accumulated depreciation,,206.66
+,,,721,Accumulated depreciation,,412.50
+,,,731,Accumulated depreciation,,333.33
+2025-10-31,Bank fees Oct 2025,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2025-11-10,Loan to director,,640,Loan to director,4000.00,
+,,,090,Transfer,,4000.00
+2025-11-17,Business loan repayment Nov 2025,,900,Principal,1000.00,
+,,,437,Interest,268.50,
+,,,090,Loan repayment,,1268.50
+2025-11-21,PAYG withholding remitted - October 2025,,825,PAYG Oct 2025,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2025-11-28,Pay run November 2025,PAY-202511,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2025-11-28,Bank fees Nov 2025,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2025-11-30,Insurance - release prepayment Nov 2025,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2025-11-30,Depreciation November 2025,DEP-202511,416,Depreciation,952.49,
+,,,711,Accumulated depreciation,,206.67
+,,,721,Accumulated depreciation,,412.49
+,,,731,Accumulated depreciation,,333.33
+2025-12-15,Business loan repayment Dec 2025,,900,Principal,1000.00,
+,,,437,Interest,261.04,
+,,,090,Loan repayment,,1261.04
+2025-12-22,PAYG withholding remitted - November 2025,,825,PAYG Nov 2025,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2025-12-31,Pay run December 2025,PAY-202512,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2025-12-31,Insurance - release prepayment Dec 2025,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2025-12-31,Depreciation December 2025,DEP-202512,416,Depreciation,952.52,
+,,,711,Accumulated depreciation,,206.67
+,,,721,Accumulated depreciation,,412.51
+,,,731,Accumulated depreciation,,333.34
+2025-12-31,Bank fees Dec 2025,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2025-12-31,Interest received Dec 2025,,090,Interest,21.62,
+,,,270,Interest income,,21.62
+2026-01-15,Business loan repayment Jan 2026,,900,Principal,1000.00,
+,,,437,Interest,253.58,
+,,,090,Loan repayment,,1253.58
+2026-01-21,PAYG withholding remitted - December 2025,,825,PAYG Dec 2025,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2026-01-28,Superannuation contributions - quarter from Oct 2025,,826,Super remitted,6300.00,
+,,,090,Super clearing house,,6300.00
+2026-01-30,Pay run January 2026,PAY-202601,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2026-01-30,Bank fees Jan 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-01-31,Insurance - release prepayment Jan 2026,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2026-01-31,Depreciation January 2026,DEP-202601,416,Depreciation,1056.66,
+,,,711,Accumulated depreciation,,310.83
+,,,721,Accumulated depreciation,,412.50
+,,,731,Accumulated depreciation,,333.33
+2026-02-12,Director repays part of loan,,090,Repayment,2500.00,
+,,,640,Loan repayment,,2500.00
+2026-02-16,Business loan repayment Feb 2026,,900,Principal,1000.00,
+,,,437,Interest,246.13,
+,,,090,Loan repayment,,1246.13
+2026-02-23,PAYG withholding remitted - January 2026,,825,PAYG Jan 2026,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2026-02-27,Pay run February 2026,PAY-202602,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2026-02-27,Bank fees Feb 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-02-28,Insurance - release prepayment Feb 2026,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2026-02-28,Depreciation February 2026,DEP-202602,416,Depreciation,1056.65,
+,,,711,Accumulated depreciation,,310.83
+,,,721,Accumulated depreciation,,412.49
+,,,731,Accumulated depreciation,,333.33
+2026-03-02,BAS payment - quarter from Oct 2025,BAS-202510,820,GST payable settled,12036.21,
+,,,090,Paid to ATO,,12036.21
+2026-03-16,Business loan repayment Mar 2026,,900,Principal,1000.00,
+,,,437,Interest,238.67,
+,,,090,Loan repayment,,1238.67
+2026-03-16,Dividend paid,,981,Dividend,8000.00,
+,,,090,Dividend,,8000.00
+2026-03-23,PAYG withholding remitted - February 2026,,825,PAYG Feb 2026,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2026-03-31,Pay run March 2026,PAY-202603,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2026-03-31,Insurance - release prepayment Mar 2026,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2026-03-31,Depreciation March 2026,DEP-202603,416,Depreciation,1056.69,
+,,,711,Accumulated depreciation,,310.84
+,,,721,Accumulated depreciation,,412.51
+,,,731,Accumulated depreciation,,333.34
+2026-03-31,Bank fees Mar 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-03-31,Interest received Mar 2026,,090,Interest,26.10,
+,,,270,Interest income,,26.10
+2026-04-15,Business loan repayment Apr 2026,,900,Principal,1000.00,
+,,,437,Interest,231.21,
+,,,090,Loan repayment,,1231.21
+2026-04-21,PAYG withholding remitted - March 2026,,825,PAYG Mar 2026,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2026-04-28,Superannuation contributions - quarter from Jan 2026,,826,Super remitted,6300.00,
+,,,090,Super clearing house,,6300.00
+2026-04-28,BAS payment - quarter from Jan 2026,BAS-202601,820,GST payable settled,9915.50,
+,,,090,Paid to ATO,,9915.50
+2026-04-30,Pay run April 2026,PAY-202604,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2026-04-30,Insurance - release prepayment Apr 2026,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2026-04-30,Depreciation April 2026,DEP-202604,416,Depreciation,1056.66,
+,,,711,Accumulated depreciation,,310.83
+,,,721,Accumulated depreciation,,412.50
+,,,731,Accumulated depreciation,,333.33
+2026-04-30,Bank fees Apr 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-05-15,Business loan repayment May 2026,,900,Principal,1000.00,
+,,,437,Interest,223.75,
+,,,090,Loan repayment,,1223.75
+2026-05-21,PAYG withholding remitted - April 2026,,825,PAYG Apr 2026,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2026-05-29,Pay run May 2026,PAY-202605,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2026-05-29,Bank fees May 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-05-31,Insurance - release prepayment May 2026,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2026-05-31,Depreciation May 2026,DEP-202605,416,Depreciation,1056.65,
+,,,711,Accumulated depreciation,,310.83
+,,,721,Accumulated depreciation,,412.49
+,,,731,Accumulated depreciation,,333.33
+2026-06-15,Business loan repayment Jun 2026,,900,Principal,1000.00,
+,,,437,Interest,216.29,
+,,,090,Loan repayment,,1216.29
+2026-06-22,PAYG withholding remitted - May 2026,,825,PAYG May 2026,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2026-06-30,Pay run June 2026,PAY-202606,477,Gross wages,17500.00,
+,,,478,Superannuation (12%),2100.00,
+,,,825,PAYG withheld,,3762.50
+,,,826,Superannuation payable,,2100.00
+,,,090,Net wages paid,,13737.50
+2026-06-30,Insurance - release prepayment Jun 2026,,433,Insurance expense,550.00,
+,,,620,Prepayments,,550.00
+2026-06-30,Depreciation June 2026,DEP-202606,416,Depreciation,1056.69,
+,,,711,Accumulated depreciation,,310.84
+,,,721,Accumulated depreciation,,412.51
+,,,731,Accumulated depreciation,,333.34
+2026-06-30,Bank fees Jun 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-06-30,Interest received Jun 2026,,090,Interest,18.55,
+,,,270,Interest income,,18.55
+2026-06-30,Income tax provision FY,,505,Income tax expense,14500.00,
+,,,830,Income tax payable,,14500.00
+2026-07-15,Business loan repayment Jul 2026,,900,Principal,1000.00,
+,,,437,Interest,208.83,
+,,,090,Loan repayment,,1208.83
+2026-07-21,PAYG withholding remitted - June 2026,,825,PAYG Jun 2026,3762.50,
+,,,090,Remittance to ATO,,3762.50
+2026-07-28,Superannuation contributions - quarter from Apr 2026,,826,Super remitted,6300.00,
+,,,090,Super clearing house,,6300.00
+2026-07-28,BAS payment - quarter from Apr 2026,BAS-202604,820,GST payable settled,7943.50,
+,,,090,Paid to ATO,,7943.50
+2026-07-31,Pay run July 2026,PAY-202607,477,Gross wages,18200.00,
+,,,478,Superannuation (12%),2184.00,
+,,,825,PAYG withheld,,3913.00
+,,,826,Superannuation payable,,2184.00
+,,,090,Net wages paid,,14287.00
+2026-07-31,Insurance - release prepayment Jul 2026,,433,Insurance expense,595.83,
+,,,620,Prepayments,,595.83
+2026-07-31,Bank fees Jul 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-08-17,Business loan repayment Aug 2026,,900,Principal,1000.00,
+,,,437,Interest,201.38,
+,,,090,Loan repayment,,1201.38
+2026-08-21,PAYG withholding remitted - July 2026,,825,PAYG Jul 2026,3913.00,
+,,,090,Remittance to ATO,,3913.00
+2026-08-31,Pay run August 2026,PAY-202608,477,Gross wages,18200.00,
+,,,478,Superannuation (12%),2184.00,
+,,,825,PAYG withheld,,3913.00
+,,,826,Superannuation payable,,2184.00
+,,,090,Net wages paid,,14287.00
+2026-08-31,Insurance - release prepayment Aug 2026,,433,Insurance expense,595.83,
+,,,620,Prepayments,,595.83
+2026-08-31,Bank fees Aug 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-09-15,Business loan repayment Sep 2026,,900,Principal,1000.00,
+,,,437,Interest,193.92,
+,,,090,Loan repayment,,1193.92
+2026-09-21,PAYG withholding remitted - August 2026,,825,PAYG Aug 2026,3913.00,
+,,,090,Remittance to ATO,,3913.00
+2026-09-30,Pay run September 2026,PAY-202609,477,Gross wages,18200.00,
+,,,478,Superannuation (12%),2184.00,
+,,,825,PAYG withheld,,3913.00
+,,,826,Superannuation payable,,2184.00
+,,,090,Net wages paid,,14287.00
+2026-09-30,Insurance - release prepayment Sep 2026,,433,Insurance expense,595.83,
+,,,620,Prepayments,,595.83
+2026-09-30,Bank fees Sep 2026,,404,Account keeping fees,15.00,
+,,,090,Bank fees,,15.00
+2026-09-30,Interest received Sep 2026,,090,Interest,20.32,
+,,,270,Interest income,,20.32

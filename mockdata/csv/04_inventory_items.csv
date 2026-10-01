@@ -1,0 +1,7 @@
+sku,name,description,inventory_account,cogs_account,sales_account,purchase_tax_code,sales_tax_code,sale_price,opening_qty,opening_unit_cost,opening_date,opening_credit_account
+LAP-14,Business laptop 14 inch,Mock data,630,310,201,INPUT,OUTPUT,1450.00,10,950.00,2025-07-01,960
+MON-27,Monitor 27 inch 4K,Mock data,630,310,201,INPUT,OUTPUT,499.00,20,300.00,2025-07-01,960
+KBD-WL,Wireless keyboard,Mock data,630,310,201,INPUT,OUTPUT,79.00,40,36.00,2025-07-01,960
+MSE-WL,Wireless mouse,Mock data,630,310,201,INPUT,OUTPUT,49.00,50,21.00,2025-07-01,960
+DOCK-C,USB-C docking station,Mock data,630,310,201,INPUT,OUTPUT,189.00,15,110.00,2025-07-01,960
+CAB-HD2,HDMI cable 2m,Mock data,630,310,201,INPUT,OUTPUT,19.95,100,6.20,2025-07-01,960
