@@ -54,3 +54,7 @@ ADMIN CONSOLE > OPEN BANKING (platform set-up for Basiq + OpenFeed): new tab in 
   no keys, no setup instructions - just "Connect my bank" (OpenFeed) and the Basiq account tools; if the platform isn't set up, clients see "contact AccFino support".
   Files: accfino_core/openbanking_setup.py, api/openbanking_admin_api.py, open_banking/auth.py + user.py (read settings live), OpenBankingSetupPage.jsx,
   BasiqPlatformSetup.jsx, OpenFeedPlatformSetup.jsx, OpenBankingPage.jsx, BankFeedCard.jsx, AdminHub.jsx, App.jsx, booksApi.js, react_api.py.
+
+ADMIN CONSOLE REORGANISED: "Open Banking" and "Payment Card Setup" are now tabs INSIDE Admin Console > API Keys (with Platform Settings and ML Training), not separate menu items.
+  Old addresses /admin/open-banking and /admin/payments redirect to the right tab; /admin/api-keys?tab=open-banking|payments deep-links. Files: AdminPage.jsx, AdminHub.jsx, App.jsx,
+  OpenBankingSetupPage.jsx + PaymentGatewayAdminPage.jsx (new "embedded" mode), OpenBankingPage.jsx / BankFeedCard.jsx (links).

@@ -4194,15 +4194,6 @@ def _serve_app() -> _FileResponse:
 def marketing_html():
     return _serve_marketing()
 
-# -- Brand logo - served at /accfino-logo.png ----------------------------------
-@app.get("/accfino-logo.png", include_in_schema=False)
-def brand_logo():
-    for base in (_DIST, _PUBLIC):
-        f = base / "accfino-logo.png"
-        if f.is_file():
-            return _FileResponse(str(f), media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
-    raise HTTPException(404, "Not found")
-
 
 @app.get("/modules.json", include_in_schema=False)
 def module_registry():

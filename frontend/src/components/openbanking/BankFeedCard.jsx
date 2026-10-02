@@ -54,7 +54,7 @@ export default function BankFeedCard({ isAdmin = false }) {
 
       {!st.available && (
         <div className="alert alert-warning text-sm" data-testid="feed-unavailable">
-          Live bank feeds are not switched on for this platform yet. {isAdmin ? <>Set them up in <a href="/admin/open-banking">Admin Console &gt; Open Banking</a>.</> : 'Please contact AccFino support.'}
+          Live bank feeds are not switched on for this platform yet. {isAdmin ? <>Set them up in <a href="/admin/api-keys?tab=open-banking">Admin Console &gt; API Keys &gt; Open Banking</a>.</> : 'Please contact AccFino support.'}
         </div>
       )}
 

@@ -122,7 +122,7 @@ export default function OpenBankingPage() {
       {status && !status.configured && (
         <div className="alert alert-warning" style={{marginBottom:20}} data-testid="basiq-unavailable">
           Basiq bank feeds are not switched on for this platform yet. {isAdmin
-            ? <>Set them up in <Link to="/admin/open-banking">Admin Console &gt; Open Banking</Link>.</>
+            ? <>Set them up in <Link to="/admin/api-keys?tab=open-banking">Admin Console &gt; API Keys &gt; Open Banking</Link>.</>
             : 'Please contact AccFino support.'}
         </div>
       )}

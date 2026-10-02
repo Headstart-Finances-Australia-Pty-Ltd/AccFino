@@ -18,7 +18,7 @@ const GATEWAY_TABS = [
   { key:'stripe', label:'Stripe', moduleId:'stripe-admin-payments' },
 ]
 
-export default function PaymentGatewayAdminPage() {
+export default function PaymentGatewayAdminPage({ embedded = false }) {
   const { isModuleVisible } = useModuleVisibility()
   const TABS = GATEWAY_TABS.filter(t => isModuleVisible(t.moduleId))
   const [tab, setTabState] = useState('square')
@@ -28,10 +28,10 @@ export default function PaymentGatewayAdminPage() {
   return (
     <div className="fade-in">
       <div style={{marginBottom:16}}>
-        <div className="flex items-center gap-1">
+        {!embedded && <div className="flex items-center gap-1">
           <CreditCard size={22} />
           <h2 style={{margin:0}}>Payment Card Setup</h2>
-        </div>
+        </div>}
         <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
           Configure the card payment gateway(s) AccFino uses to charge orgs their platform subscription/licence
           fee — Square and/or Stripe. This is separate from Settings &gt; Payment Setup, where an org connects

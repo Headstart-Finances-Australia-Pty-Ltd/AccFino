@@ -10,7 +10,7 @@ One-time platform setup by the AccFino administrator. Afterwards every organisat
 3. Restart the backend. It creates the tables `openfeed_flows` and `openfeed_connections` automatically.
 
 ## 2. Generate AccFino's keys
-Sign in as the AccFino administrator > **Admin Console > Open Banking** > OpenFeed card > **Generate keys**.
+Sign in as the AccFino administrator > **Admin Console > API Keys > Open Banking** > OpenFeed card > **Generate keys**.
 Copy the public key set (JSON) shown. The private keys stay on the server, encrypted.
 
 ## 3. Register AccFino at OpenFeed
@@ -25,7 +25,7 @@ No redirect URI is registered - OpenFeed takes it from each request.
 Submit. OpenFeed shows two IDs.
 
 ## 4. Paste the IDs back into AccFino
-Same Admin Console > Open Banking screen, step 2 of the OpenFeed card:
+Same Admin Console > API Keys > Open Banking tab, step 2 of the OpenFeed card:
 - OAuth2 Client ID -> the value that starts with `app-`
 - App ID -> the plain UUID
 Save. The panel should now say "Ready".

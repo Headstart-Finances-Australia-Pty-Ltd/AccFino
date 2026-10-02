@@ -60,12 +60,10 @@ const FileManagerPage = lazy(() => import('./pages/FileManagerPage.jsx'))
 const LicencePage = lazy(() => import('./pages/LicencePage.jsx'))
 const PricingAdminPage = lazy(() => import('./pages/PricingAdminPage.jsx'))
 const ModulesAdminPage = lazy(() => import('./pages/ModulesAdminPage.jsx'))
-const PaymentGatewayAdminPage = lazy(() => import('./pages/PaymentGatewayAdminPage.jsx'))
 import ResetPasswordPage     from './pages/ResetPasswordPage.jsx'
 const SetupPage = lazy(() => import('./pages/SetupPage.jsx'))
 const LedgerPage = lazy(() => import('./pages/ledger/LedgerPage.jsx'))
 const OpenBankingPage = lazy(() => import('./pages/OpenBankingPage.jsx'))
-const OpenBankingSetupPage = lazy(() => import('./pages/admin/OpenBankingSetupPage.jsx'))
 const IAMSetupPage = lazy(() => import('./pages/settings/IAMSetupPage.jsx'))
 const ApiWebhooksPage = lazy(() => import('./pages/settings/ApiWebhooksPage.jsx'))
 import ComingSoonTab         from './components/layout/ComingSoonTab.jsx'
@@ -140,9 +138,9 @@ function AppRoutes() {
           <Route path="api-keys"        element={<AdminPage />} />
           <Route path="licence"         element={<LicencePage />} />
           <Route path="file-manager"    element={<FileManagerPage />} />
-          <Route path="payments"        element={<PaymentGatewayAdminPage />} />
+          <Route path="payments"        element={<Navigate to="/admin/api-keys?tab=payments" replace />} />
           <Route path="pricing"         element={<PricingAdminPage />} />
-          <Route path="open-banking"    element={<OpenBankingSetupPage />} />
+          <Route path="open-banking"    element={<Navigate to="/admin/api-keys?tab=open-banking" replace />} />
           <Route path="modules"         element={<ModulesAdminPage />} />
           {/* Old addresses keep working - Platform Users now lives inside "licence" (Users & Licence);
               Company DB was removed (covered by Data Manager / Settings > Setup > Knowledgebase). */}

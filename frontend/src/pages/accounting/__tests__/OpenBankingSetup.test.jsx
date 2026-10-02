@@ -71,7 +71,7 @@ describe('Settings > Open Banking (what clients see)', () => {
     plain.obStatus.mockResolvedValue({ data: { available: true, configured: false } })
     render(<MemoryRouter><OpenBankingPage /></MemoryRouter>)
     const note = await screen.findByTestId('basiq-unavailable')
-    expect(note.querySelector('a')).toHaveAttribute('href', '/admin/open-banking')
+    expect(note.querySelector('a')).toHaveAttribute('href', '/admin/api-keys?tab=open-banking')
   })
 
   it('the OpenFeed tab shows only the Connect my bank card - never the platform set-up, even for the administrator', async () => {

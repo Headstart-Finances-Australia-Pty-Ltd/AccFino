@@ -3,6 +3,8 @@ import { mlStatus, mlTrain, mlSampleCsv } from '../lib/api.js'
 import { Key, Brain, Check, X, Play, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PlatformSettingsPanels from './admin/PlatformSettingsPanels.jsx'
+import OpenBankingSetupPage from './admin/OpenBankingSetupPage.jsx'
+import PaymentGatewayAdminPage from './PaymentGatewayAdminPage.jsx'
 import { useModuleVisibility } from '../hooks/useModuleVisibility.jsx'
 
 const ALLOWED_GST = ['','GST on Expenses','GST on Capital','GST on Income','GST Free Expenses','GST Free Income','BAS Excluded']
@@ -16,13 +18,20 @@ const DIRECTION_OPTIONS = [
 
 const ALL_TABS = [
   ['platform','🔌 Platform Settings', null],
+  ['open-banking','🏦 Open Banking', null],          // Basiq + OpenFeed platform set-up (clients only ever see Settings > Open Banking)
+  ['payments','💳 Payment Card Setup', null],         // Square / Stripe: how AccFino charges organisations their subscription
   ['ml','🧠 ML Training', 'ml-training'],
 ]
+// A deep link such as /admin/api-keys?tab=open-banking opens that tab straight away.
+const tabFromUrl = () => {
+  const k = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('tab')
+  return ALL_TABS.some(([id]) => id === k) ? k : 'platform'
+}
 
 export default function AdminPage() {
   const { isModuleVisible } = useModuleVisibility()
   const TABS = ALL_TABS.filter(([,,moduleId]) => !moduleId || isModuleVisible(moduleId))
-  const [tab,       setTabState] = useState('platform')
+  const [tab,       setTabState] = useState(tabFromUrl)
   const setTab = k => setTabState(k)
   useEffect(() => { if (!TABS.find(([k]) => k === tab) && TABS[0]) setTab(TABS[0][0]) }, [TABS.map(([k])=>k).join(',')])
   const [mlStat,    setMlStat]   = useState(null)
@@ -63,9 +72,9 @@ export default function AdminPage() {
           <h2 style={{margin:0}}>API Keys</h2>
         </div>
         <p className="text-sm text-muted" style={{margin:'4px 0 0'}}>
-          Configure platform-wide settings (Groq key pool, Database, S3 storage, system email, Calendly, meeting
-          link) and train the ML classifier. Business Rules (RDR) are managed on the Setup page. Card-payment
-          gateways have moved to Settings &gt; Payment Setup, and your password to Admin &gt; Users &amp; Licence.
+          Everything the platform needs to be set up once: platform settings (Groq key pool, Database, S3 storage, system email, Calendly, meeting
+          link), the Open Banking providers (Basiq, OpenFeed), the card-payment gateways AccFino charges subscriptions with, and the ML classifier.
+          Business Rules (RDR) are managed on the Setup page, and your password under Admin &gt; Users &amp; Licence.
         </p>
       </div>
 
@@ -76,6 +85,8 @@ export default function AdminPage() {
       </div>
 
       {tab==='platform' && <PlatformSettingsPanels/>}
+      {tab==='open-banking' && <OpenBankingSetupPage embedded />}
+      {tab==='payments' && <PaymentGatewayAdminPage embedded />}
 
       {/* ── ML Training ── */}
       {tab==='ml' && (
