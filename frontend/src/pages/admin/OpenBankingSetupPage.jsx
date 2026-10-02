@@ -2,9 +2,11 @@ import React from 'react'
 import { Landmark } from 'lucide-react'
 import BasiqPlatformSetup from '../../components/openbanking/BasiqPlatformSetup.jsx'
 import OpenFeedPlatformSetup from '../../components/openbanking/OpenFeedPlatformSetup.jsx'
+import { useModuleVisibility } from '../../hooks/useModuleVisibility.jsx'
 
 /** Admin Console > API Keys > Open Banking: platform set-up for both bank-feed providers. Clients only ever use Settings > Open Banking. */
 export default function OpenBankingSetupPage({ embedded = false }) {
+  const { isModuleVisible } = useModuleVisibility()          // each provider can be switched on/off in Admin > Modules Management > Admin Console
   return (
     <div data-testid="open-banking-setup">
       <div style={{ marginBottom: 16 }}>
@@ -14,8 +16,8 @@ export default function OpenBankingSetupPage({ embedded = false }) {
           with no accounts or keys of their own to create.
         </p>
       </div>
-      <BasiqPlatformSetup />
-      <OpenFeedPlatformSetup />
+      {isModuleVisible('basiq-admin-open-banking') && <BasiqPlatformSetup />}
+      {isModuleVisible('openfeed-admin-open-banking') && <OpenFeedPlatformSetup />}
     </div>
   )
 }

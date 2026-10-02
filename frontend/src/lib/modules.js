@@ -92,3 +92,16 @@ export function tabsForDomain(domainId, TABS, isModuleVisible) {
     return moduleId ? isModuleVisible(moduleId) : true
   })
 }
+
+// The business module the current page belongs to (by route + ?tab), or null for pages that are not modules (Home, Settings, Admin ...).
+// Used to stop a page opening by typed address / bookmark when the organisation's plan does not include it.
+export function moduleAtLocation(location) {
+  const tab = new URLSearchParams(location.search).get('tab') || null
+  const here = MODULES.filter(m => !isAreaItem(m) && m.route === location.pathname)
+  if (!here.length) return null
+  const exact = here.filter(m => (m.tab || null) === tab)
+  if (exact.length) return exact.find(m => !m.id.startsWith('overview-')) || exact[0]
+  if (!tab) return here.find(m => !m.tab) || null                      // the page's default tab
+  return here.find(m => (m.tabs || []).includes(tab)) || null          // one module owning several tabs
+}
+

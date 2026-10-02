@@ -52,4 +52,17 @@ describe('plans grouped by business domain', () => {
     const acc = screen.getByTestId('pick-domain-accounting')
     expect(within(acc).getByLabelText('Whole domain Books and Accounting')).toBeChecked()
   })
+
+  it('says plainly what the Enforce switch does: Off = every organisation sees everything, On = plans hide what they do not include', async () => {
+    const overview = (enforced) => ({ data: { settings: { enforced, default_plan: 'essentials' }, catalogue: CATALOGUE, domains: DOMAINS, addons: [], organisations: [], plans: [] } })
+    api.adminSubOverview.mockResolvedValue(overview(false))
+    const { unmount } = render(<SubscriptionAdminPanel />)
+    expect(await screen.findByTestId('enforce-explainer')).toHaveTextContent('plans are not applied yet')
+    expect(screen.getByTestId('enforce-explainer')).toHaveTextContent('every domain and module')
+    unmount()
+    api.adminSubOverview.mockResolvedValue(overview(true))
+    render(<SubscriptionAdminPanel />)
+    expect(await screen.findByTestId('enforce-explainer')).toHaveTextContent('in the menu, the tabs, the Home page and the dashboard')
+  })
 })
+

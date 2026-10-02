@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
-vi.mock('../../../hooks/useModuleVisibility.jsx', () => ({ useModuleVisibility: () => ({ isModuleVisible: () => true }) }))
+let hidden = new Set()
+vi.mock('../../../hooks/useModuleVisibility.jsx', () => ({ useModuleVisibility: () => ({ isModuleVisible: id => !hidden.has(id) }) }))
 vi.mock('../../../lib/api.js', () => ({ mlStatus: vi.fn(() => Promise.resolve({ data: {} })), mlTrain: vi.fn(), mlSampleCsv: vi.fn() }))
 vi.mock('react-hot-toast', () => ({ default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }))
 vi.mock('../../admin/PlatformSettingsPanels.jsx', () => ({ default: () => <div data-testid="platform-panels" /> }))
@@ -13,7 +14,7 @@ import AdminPage from '../../AdminPage.jsx'
 import AdminHub from '../../hubs/AdminHub.jsx'
 
 const setUrl = (search) => window.history.replaceState({}, '', '/admin/api-keys' + search)
-beforeEach(() => setUrl(''))
+beforeEach(() => { hidden = new Set(); setUrl('') })
 
 describe('Admin Console > API Keys holds all platform set-up', () => {
   it('has Open Banking and Payment Card Setup as tabs next to Platform Settings', () => {
@@ -52,5 +53,31 @@ describe('Admin Console > API Keys holds all platform set-up', () => {
     expect(screen.getByText('Pricing')).toBeInTheDocument()
     expect(screen.queryByText('Payment Card Setup')).toBeNull()
     expect(screen.queryByText('Open Banking')).toBeNull()
+  })
+
+  it('the Open Banking tab is hidden only when BOTH its providers are switched off in Modules Management (Admin Console)', () => {
+    hidden = new Set(['basiq-admin-open-banking'])
+    const { unmount } = render(<AdminPage />)
+    expect(screen.getByRole('button', { name: /Open Banking/ })).toBeInTheDocument()            // OpenFeed is still on
+    unmount()
+    hidden = new Set(['basiq-admin-open-banking', 'openfeed-admin-open-banking'])
+    render(<AdminPage />)
+    expect(screen.queryByRole('button', { name: /Open Banking/ })).toBeNull()
+  })
+
+  it('the Payment Card Setup tab follows the Square / Stripe Admin Console switches the same way', () => {
+    hidden = new Set(['square-admin-payments'])
+    const { unmount } = render(<AdminPage />)
+    expect(screen.getByRole('button', { name: /Payment Card Setup/ })).toBeInTheDocument()
+    unmount()
+    hidden = new Set(['square-admin-payments', 'stripe-admin-payments'])
+    render(<AdminPage />)
+    expect(screen.queryByRole('button', { name: /Payment Card Setup/ })).toBeNull()
+  })
+
+  it('a deep link to a tab that is switched off falls back to Platform Settings', () => {
+    hidden = new Set(['basiq-admin-open-banking', 'openfeed-admin-open-banking']); setUrl('?tab=open-banking')
+    render(<AdminPage />)
+    expect(screen.getByTestId('platform-panels')).toBeInTheDocument()
   })
 })

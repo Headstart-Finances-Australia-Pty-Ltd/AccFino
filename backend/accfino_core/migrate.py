@@ -324,8 +324,9 @@ def run(engine, SessionLocal) -> None:
     from accfino_core.subscription.models import SUBSCRIPTION_TABLES
     from accfino_core.tenancy.models import TENANCY_TABLES
     from accfino_core.openfeed_cdr import OPENFEED_TABLES
+    from accfino_core.billing.models import BILLING_TABLES
     _drop_stale_tables(engine, ["stock_items", "stock_movements", "fixed_assets", "asset_depreciation_runs"])
-    m.Base.metadata.create_all(bind=engine, tables=NEW_TABLES + BOOKS_TABLES + ASSETS_TABLES + INVENTORY_TABLES + JOURNAL_TABLES + SUBSCRIPTION_TABLES + TENANCY_TABLES + OPENFEED_TABLES, checkfirst=True)
+    m.Base.metadata.create_all(bind=engine, tables=NEW_TABLES + BOOKS_TABLES + ASSETS_TABLES + INVENTORY_TABLES + JOURNAL_TABLES + SUBSCRIPTION_TABLES + TENANCY_TABLES + OPENFEED_TABLES + BILLING_TABLES, checkfirst=True)
     _ensure_org_admin_column(engine)
     try:                                          # organisations created before tenant URLs get a URL name
         from sqlalchemy.orm import Session as _S

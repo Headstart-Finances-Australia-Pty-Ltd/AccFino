@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import * as api from '../../lib/booksApi.js'
 import { fmtAUD, fmtDate } from '../books/Common.jsx'
+import BillingCard from '../billing/BillingCard.jsx'
 
 const STATUS_LABEL = { trial: 'Trial', active: 'Active', past_due: 'Payment overdue', cancelled: 'Cancelled', expired: 'Expired (read-only)' }
 
@@ -87,6 +88,7 @@ export default function SubscriptionCard() {
           </div>))}
       </div>
       {!sub.can_manage && <div className="text-xs text-muted mt-4">Only an owner can request plan changes.</div>}
+      <BillingCard />
     </div>
   )
 }

@@ -73,6 +73,11 @@ export default function SubscriptionAdminPanel() {
           <b>Enforce subscriptions</b>
           <span className={`badge ${d.settings.enforced ? 'badge-success' : 'badge-neutral'}`}>{d.settings.enforced ? 'On' : 'Off'}</span>
         </label>
+        <div className={`text-xs ${d.settings.enforced ? 'text-muted' : ''}`} style={{ marginTop: 6 }} data-testid="enforce-explainer">
+          {d.settings.enforced
+            ? 'On: each organisation sees only the business domains and modules its plan (and add-ons) include - in the menu, the tabs, the Home page and the dashboard. The server refuses the rest.'
+            : <><b>Off: plans are not applied yet.</b> Every organisation sees every domain and module, whatever its plan. Tick the box above to hide what a plan does not include.</>}
+        </div>
         <div className="text-xs text-muted" style={{ margin: '6px 0 10px 26px' }}>
           Off (default): every organisation can use every module, whatever plan it is on. On: each organisation sees and can use only what its plan and add-ons include; organisations with no plan assigned keep everything. Takes effect immediately.
         </div>

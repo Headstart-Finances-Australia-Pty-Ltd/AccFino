@@ -212,6 +212,8 @@ export const squareStatus     = ()          => http.get('/square/status')
 export const squareSaveConfig = (data)      => http.post('/square/config', data)
 export const openfeedStatus     = ()        => http.get('/openfeed/status')
 export const openfeedSaveConfig = (data)    => http.post('/openfeed/config', data)
+export const openfeedPublicKey    = ()      => http.get('/openfeed/public-key')
+export const openfeedTest         = ()      => http.post('/openfeed/test')
 export const openfeedGenerateKeys = ()      => http.post('/openfeed/keys', {})
 
 

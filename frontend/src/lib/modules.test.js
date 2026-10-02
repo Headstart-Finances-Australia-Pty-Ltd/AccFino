@@ -99,3 +99,19 @@ describe('Settings/Admin switches never appear as business tiles', () => {
     expect(ids).toEqual(['dashboard-accounting', 'general-ledger', 'reconciliation', 'sales', 'purchases', 'expenses', 'inventory-trading', 'fixed-assets', 'financial-reports'])
   })
 })
+
+describe('Admin Console switches for Open Banking and Payment Card Setup', () => {
+  const adminItems = MODULES.filter(m => m.area === 'admin')
+  const inGroup = g => adminItems.filter(m => m.group === g).map(m => m.id).sort()
+  it('Open Banking has its own Basiq and OpenFeed switches under Admin Console (not only under Settings)', () => {
+    expect(inGroup('Open Banking')).toEqual(['basiq-admin-open-banking', 'openfeed-admin-open-banking'])
+    expect(MODULES.filter(m => m.area === 'settings' && m.group === 'Open Banking').map(m => m.id).sort()).toEqual(['basiq-open-banking', 'openfeed-open-banking'])
+  })
+  it('Payment Card Setup has Square and Stripe switches under Admin Console', () => {
+    expect(inGroup('Payment Card Setup')).toEqual(['square-admin-payments', 'stripe-admin-payments'])
+  })
+  it('every Admin Console switch names where it lives', () => {
+    for (const m of adminItems) { expect(m.sub, m.id).toMatch(/^Admin > /); expect(m.blurb, m.id).toBeTruthy() }
+  })
+})
+

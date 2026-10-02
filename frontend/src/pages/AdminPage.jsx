@@ -18,8 +18,8 @@ const DIRECTION_OPTIONS = [
 
 const ALL_TABS = [
   ['platform','🔌 Platform Settings', null],
-  ['open-banking','🏦 Open Banking', null],          // Basiq + OpenFeed platform set-up (clients only ever see Settings > Open Banking)
-  ['payments','💳 Payment Card Setup', null],         // Square / Stripe: how AccFino charges organisations their subscription
+  ['open-banking','🏦 Open Banking', ['basiq-admin-open-banking','openfeed-admin-open-banking']],     // Basiq + OpenFeed platform set-up (clients only ever see Settings > Open Banking)
+  ['payments','💳 Payment Card Setup', ['square-admin-payments','stripe-admin-payments']],            // Square / Stripe: how AccFino charges organisations their subscription
   ['ml','🧠 ML Training', 'ml-training'],
 ]
 // A deep link such as /admin/api-keys?tab=open-banking opens that tab straight away.
@@ -30,7 +30,8 @@ const tabFromUrl = () => {
 
 export default function AdminPage() {
   const { isModuleVisible } = useModuleVisibility()
-  const TABS = ALL_TABS.filter(([,,moduleId]) => !moduleId || isModuleVisible(moduleId))
+  // a tab with several module ids is shown while ANY of them is switched on (Admin > Modules Management > Settings & Admin Console)
+  const TABS = ALL_TABS.filter(([,,moduleId]) => !moduleId || [].concat(moduleId).some(isModuleVisible))
   const [tab,       setTabState] = useState(tabFromUrl)
   const setTab = k => setTabState(k)
   useEffect(() => { if (!TABS.find(([k]) => k === tab) && TABS[0]) setTab(TABS[0][0]) }, [TABS.map(([k])=>k).join(',')])

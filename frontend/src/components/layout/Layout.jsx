@@ -7,6 +7,7 @@ import { licenceMyModules, getMyPlan } from '../../lib/api.js'
 import { useModuleVisibility } from '../../hooks/useModuleVisibility.jsx'
 import useOrgRole from '../../hooks/useOrgRole.jsx'
 import { ProfileCard } from '../../pages/MyAccountPage.jsx'
+import PlanGate from '../subscription/PlanGate.jsx'
 import { me as fetchMe } from '../../lib/platformApi.js'
 import { domainGroups, hrefOf, activeLeafId, domainForLocation, visibleGroups } from '../../lib/modules.js'
 import { Building2, LayoutDashboard, ArrowLeftRight, TrendingUp, BarChart2, FileText, ShieldCheck, ChevronLeft, ChevronRight, FolderOpen, BadgeCheck, Settings, Cpu, BookOpen, DollarSign, Users, Landmark, Building, Lock, UserCog, LineChart,
@@ -338,7 +339,7 @@ export default function Layout() {
           userName={userName}
           onLogout={handleLogout}
         />
-        <main style={{flex:1, padding:'24px 28px', overflowY:'auto'}}><ReconciliationContext.Provider value={reconCtx}><Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text-3)'}}>Loading…</div>}>{needsProfile ? <div style={{maxWidth:560, margin:'24px auto'}} data-testid="complete-profile"><ProfileCard required /></div> : <Outlet/>}</Suspense></ReconciliationContext.Provider></main>
+        <main style={{flex:1, padding:'24px 28px', overflowY:'auto'}}><ReconciliationContext.Provider value={reconCtx}><Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text-3)'}}>Loading…</div>}>{needsProfile ? <div style={{maxWidth:560, margin:'24px auto'}} data-testid="complete-profile"><ProfileCard required /></div> : <PlanGate><Outlet/></PlanGate>}</Suspense></ReconciliationContext.Provider></main>
       </div>
     </div>
     </>

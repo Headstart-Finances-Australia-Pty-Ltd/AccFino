@@ -482,6 +482,12 @@ async def _on_startup():
     global _app_ready
     _app_ready = True
 
+    try:                                       # automatic subscription renewals (Square); one worker at a time, see accfino_core/billing/runner.py
+        from accfino_core.billing.runner import start_billing_loop
+        start_billing_loop()
+    except Exception as _be:
+        logger.warning("startup: billing loop not started: %s", _be)
+
     import threading as _threading
 
     def _bg_init():
@@ -2571,7 +2577,7 @@ def cf_predict(run_id: str, model_name: str=Body(..., embed=True)):
     except Exception as e:
         raise HTTPException(500, str(e))
     plot_b64 = base64.b64encode(NEXT_MONTH_PLOT.read_bytes()).decode() if NEXT_MONTH_PLOT.exists() else ""
-    csv_data = NEXT_MONTH_CSV.read_text() if NEXT_MONTH_CSV.exists() else ""
+    csv_data = NEXT_MONTH_CSV.read_text(encoding="utf-8") if NEXT_MONTH_CSV.exists() else ""
     return {**pred, "forecast_plot_b64": plot_b64, "forecast_csv": csv_data}
 
 
@@ -2792,7 +2798,7 @@ _INTEGRATIONS_FILE = _DATA_DIR / "integrations.json"
 def _load_integrations() -> dict:
     try:
         if _INTEGRATIONS_FILE.exists():
-            return json.loads(_INTEGRATIONS_FILE.read_text())
+            return json.loads(_INTEGRATIONS_FILE.read_text(encoding="utf-8"))
     except Exception:
         pass
     return {}
@@ -2801,7 +2807,7 @@ def _save_integration(name: str, cfg: dict):
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
     data = _load_integrations()
     data[name] = cfg
-    _INTEGRATIONS_FILE.write_text(json.dumps(data, indent=2))
+    _INTEGRATIONS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 def _integration_cfg(name: str) -> dict:
     return _load_integrations().get(name, {})
@@ -4030,7 +4036,7 @@ def _load_module_visibility() -> dict:
             rows = db.query(PlatformSetting).filter(PlatformSetting.service == _MV_SERVICE).all()
             if not rows and _MODULE_VISIBILITY_FILE.exists():
                 try:
-                    legacy = json.loads(_MODULE_VISIBILITY_FILE.read_text())
+                    legacy = json.loads(_MODULE_VISIBILITY_FILE.read_text(encoding="utf-8"))
                     _save_module_visibility(legacy)
                     _MODULE_VISIBILITY_FILE.rename(_MODULE_VISIBILITY_FILE.with_suffix(".json.migrated"))
                     return _load_module_visibility()
@@ -4205,7 +4211,7 @@ def module_registry():
     registry = None
     for p in (_DIST / "modules.json", _ROOT / "frontend" / "src" / "config" / "modules.json"):
         if p.exists():
-            registry = json.loads(p.read_text())
+            registry = json.loads(p.read_text(encoding="utf-8"))
             break
     if registry is None:
         return {"version": 0, "domains": [], "modules": []}

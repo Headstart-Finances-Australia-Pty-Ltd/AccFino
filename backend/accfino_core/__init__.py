@@ -9,7 +9,7 @@ catch-all route so their GET endpoints are not shadowed.
 
 
 def install(app):
-    from accfino_core.api import admin_api, assets_api, audit_api, auth_ext, books_banking, books_docs, books_expenses, books_import, books_legacy, books_reports, force_delete_api, org_directory_api, public_pricing_api, openfeed_api, openbanking_admin_api, iam_api, signup_api, subscription_api, inventory_api, ledger, ledger_tools, mfa_api, org, org_identity
+    from accfino_core.api import admin_api, assets_api, audit_api, auth_ext, books_banking, books_docs, books_expenses, books_import, books_legacy, books_reports, force_delete_api, org_directory_api, public_pricing_api, openfeed_api, openbanking_admin_api, billing_api, iam_api, signup_api, subscription_api, inventory_api, ledger, ledger_tools, mfa_api, org, org_identity
     from accfino_core.books.common import BooksError
     from accfino_core.subscription.service import feature_gate
     from fastapi import Depends
@@ -45,6 +45,8 @@ def install(app):
     app.include_router(public_pricing_api.router, prefix="/public/pricing", tags=["public"])
     app.include_router(openfeed_api.platform, prefix="/openfeed", tags=["admin"])
     app.include_router(openbanking_admin_api.router, prefix="/admin/open-banking", tags=["admin"])
+    app.include_router(billing_api.admin_router, prefix="/admin/billing", tags=["admin"])
+    app.include_router(billing_api.org_router, prefix="/org/current/billing", tags=["billing"])
     app.include_router(openfeed_api.org_router, prefix="/org/current/open-banking", tags=["open-banking"])
     app.include_router(openfeed_api.public, prefix="/open-banking/openfeed", tags=["open-banking"])
     # ---- Phase 1: Books & Accounting engine ----

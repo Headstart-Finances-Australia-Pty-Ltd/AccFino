@@ -600,8 +600,8 @@
       "area": "admin",
       "group": "Payment Card Setup",
       "emoji": "🟪",
-      "sub": "Admin > Payment Card Setup",
-      "blurb": "Square credit card payment gateway, configured in Admin > Payment Card Setup, used to charge orgs their platform subscription fee. Independent of Square in Settings > Payment Setup."
+      "sub": "Admin > API Keys > Payment Card Setup",
+      "blurb": "Square credit card payment gateway, configured in Admin > API Keys > Payment Card Setup, used to charge orgs their platform subscription fee. Independent of Square in Settings > Payment Setup."
     },
     {
       "id": "stripe-admin-payments",
@@ -612,8 +612,8 @@
       "area": "admin",
       "group": "Payment Card Setup",
       "emoji": "💳",
-      "sub": "Admin > Payment Card Setup",
-      "blurb": "Stripe credit card payment gateway, configured in Admin > Payment Card Setup, used to charge orgs their platform subscription fee. Independent of Stripe in Settings > Payment Setup."
+      "sub": "Admin > API Keys > Payment Card Setup",
+      "blurb": "Stripe credit card payment gateway, configured in Admin > API Keys > Payment Card Setup, used to charge orgs their platform subscription fee. Independent of Stripe in Settings > Payment Setup."
     },
     {
       "id": "stripe-payments",
@@ -746,6 +746,30 @@
       "emoji": "📹",
       "sub": "Admin > API Keys > Platform Settings",
       "blurb": "Default Zoom / Teams / Google Meet link"
+    },
+    {
+      "id": "basiq-admin-open-banking",
+      "domain": "accounting",
+      "name": "Basiq",
+      "status": "live",
+      "nav": false,
+      "area": "admin",
+      "group": "Open Banking",
+      "emoji": "🏦",
+      "sub": "Admin > API Keys > Open Banking",
+      "blurb": "Basiq platform set-up (API key), done once by the AccFino administrator. Independent of Basiq in Settings > Open Banking, where each organisation connects its own accounts."
+    },
+    {
+      "id": "openfeed-admin-open-banking",
+      "domain": "accounting",
+      "name": "OpenFeed",
+      "status": "live",
+      "nav": false,
+      "area": "admin",
+      "group": "Open Banking",
+      "emoji": "🔗",
+      "sub": "Admin > API Keys > Open Banking",
+      "blurb": "OpenFeed platform set-up (keys and app IDs), done once by the AccFino administrator. Independent of OpenFeed in Settings > Open Banking, where each organisation presses Connect my bank."
     },
     {
       "id": "cash-flow-forecasting",

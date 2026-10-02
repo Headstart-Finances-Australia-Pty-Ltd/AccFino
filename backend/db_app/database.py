@@ -45,11 +45,18 @@ def normalise_database_url(url: str):
 
 _DATABASE_URL, _connect_args = normalise_database_url(_DATABASE_URL)
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return max(1, int(os.environ.get(name, default)))
+    except ValueError:
+        return default
+
+
 engine = create_engine(
     _DATABASE_URL,
-    pool_size=2,        # Neon free tier: max 20 connections total
-    max_overflow=3,     # Allow 3 extra on burst
-    pool_timeout=60,    # Neon can be slow to connect first time
+    pool_size=_env_int("DB_POOL_SIZE", 4),          # per process. Neon free tier allows 20 connections in total: two workers x (4 + 4) = 16
+    max_overflow=_env_int("DB_MAX_OVERFLOW", 4),    # extra connections on a burst (the admin pages fire ~15 requests at once)
+    pool_timeout=_env_int("DB_POOL_TIMEOUT", 30),   # seconds to wait for a free connection before giving up
     pool_recycle=300,   # Recycle connections every 5 min (Neon idles fast)
     pool_pre_ping=True, # Check connection before using
     connect_args=_connect_args,

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { CreditCard } from 'lucide-react'
 import { useModuleVisibility } from '../hooks/useModuleVisibility.jsx'
-import SquarePanel from '../components/payments/SquarePanel.jsx'
+import SquarePlatformPanel from '../components/payments/SquarePlatformPanel.jsx'
 import StripePanel from '../components/payments/StripePanel.jsx'
 
 // Admin > Payment Card Setup (formerly "Subscription Billing") - the card
@@ -54,7 +54,7 @@ export default function PaymentGatewayAdminPage({ embedded = false }) {
         </div>
       )}
 
-      {tab==='square' && <SquarePanel/>}
+      {tab==='square' && <SquarePlatformPanel/>}
       {tab==='stripe' && <StripePanel/>}
     </div>
   )

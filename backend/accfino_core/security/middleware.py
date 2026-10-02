@@ -18,6 +18,7 @@ Ownership (non-admin callers):
 Every non-GET request by an authenticated caller is written to the audit log.
 AUTH_MODE=report turns enforcement into log-only (emergency rollback switch).
 """
+from starlette.concurrency import run_in_threadpool
 import json
 import logging
 from urllib.parse import parse_qsl, urlencode
@@ -41,7 +42,7 @@ PUBLIC_ROUTES = {
     "/auth/reset-admin", "/auth/reset-admin-full", "/auth/mfa/login",
     "/auth/mfa/challenge/send", "/auth/mfa/passkeys/auth/options", "/auth/mfa/passkeys/auth/verify",
     "/payments/plans", "/payments/webhook", "/public/pricing",
-    "/open-banking/openfeed/callback", "/open-banking/openfeed/consent-return",   # browser redirects back from OpenFeed (single-use state inside)
+    "/open-banking/openfeed/callback", "/open-banking/openfeed/consent-return", "/open-banking/openfeed/done",   # browser redirects back from OpenFeed (single-use state inside)
     # organisation-first signup (each is rate limited and returns only an organisation's name and town)
     "/tenant/current", "/signup/organisation/validate", "/signup/organisation", "/signup/organisations/search",
     "/signup/organisations/lookup", "/signup/verify-code", "/signup/join", "/signup/contact/config", "/signup/contact/send", "/signup/contact/verify",
@@ -233,7 +234,9 @@ class AuthGuard:
         if policy == "blocked":
             return await JSONResponse({"detail": BLOCKED_METHOD_ROUTES[(method, rpath)]}, 405)(scope, receive, send)
 
-        auth, err = self._authenticate(headers)
+        # The lookup touches the database (token version, session, account state). Run it in a worker thread: done on the event loop it blocks the whole server whenever the
+        # connection pool is busy - and the busy connections cannot be released until the loop is free again (a deadlock that ends only at the pool timeout).
+        auth, err = await run_in_threadpool(self._authenticate, headers)
         scope.setdefault("state", {})["auth"] = auth
 
         if policy == "public":

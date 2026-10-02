@@ -37,7 +37,11 @@ def env(monkeypatch):
         db.add(Role(name="user")); db.commit()
     events = []
     monkeypatch.setattr(audit, "write", lambda action, **kw: events.append((action, kw)))
-    S.ensure_catalogue(db); db.commit()
+    S.ensure_catalogue(db)
+    from decimal import Decimal                                                        # these tests are about seat behaviour, not today's price list: a plan with exactly 3 users
+    db.add(S.Plan(id="seats3", name="Three seats", price_monthly=Decimal("1"), price_yearly=Decimal("10"), seat_limit=3, modules='["*"]', sort_order=90))
+    db.add(S.Plan(id="seats-unlimited", name="No limit", price_monthly=Decimal("1"), price_yearly=Decimal("10"), seat_limit=None, modules='["*"]', sort_order=91))
+    db.commit(); S.set_settings(db, default_plan="seats3"); db.commit()
     app = FastAPI()
     state = {"uid": ctx.user_id, "admin": False}
     for r, p in ((signup_api.tenant_router, "/tenant"), (signup_api.signup_router, "/signup"), (signup_api.invites_router, "/org/current/invites"), (signup_api.admin_tenant_router, "/org/current/tenant")):
@@ -297,9 +301,8 @@ def test_signup_token_cannot_be_forged_or_reused_for_another_org(env):
 def test_multi_use_code_counts_uses(env):
     db, c, state, events = env
     slug, org_id, _ = new_tenant(db, c, state)
-    S.set_settings(db, default_plan="premium"); db.query(m.SystemSetting).filter_by(key=S.DEFAULT_PLAN_KEY)       # premium = unlimited seats for this test
     from accfino_core.subscription.models import OrgSubscription
-    db.get(OrgSubscription, org_id).plan_id = "premium"; db.commit()
+    db.get(OrgSubscription, org_id).plan_id = "seats-unlimited"; db.commit()                                         # unlimited seats for this test
     code = make_codes(c, org_id, role="readonly", count=1, max_uses=2)["codes"][0]["code"]
     assert join(c, slug, code, "a1@alpha.example").status_code == 200
     assert join(c, slug, code, "a2@alpha.example").status_code == 200
