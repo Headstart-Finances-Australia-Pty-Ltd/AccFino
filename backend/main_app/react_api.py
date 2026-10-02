@@ -571,6 +571,11 @@ async def _on_startup():
             from db_app.migrations.restructure_pricing_plans import run as _mpp
             from db_app.database import engine as _db_engine
             _mpp(_db_engine)
+            from sqlalchemy.orm import Session as _AS
+            from accfino_core.subscription.align import run_alignment as _align
+            with _AS(_db_engine) as _adb:                      # the table may only exist now: mirror the organisation plans into it
+                _align(_adb)
+                _adb.commit()
         except Exception as _e:
             logger.warning(f"startup: pricing_plans restructure migration skipped: {_e}")
         try:
@@ -3092,10 +3097,13 @@ def _ob_saved_accounts(org_id: int = None) -> list:
                 "user_id": a["user_id"], "account_id": a["account_id"],
                 "bank": a.get("bank", ""), "name": a.get("name", ""), "number": a.get("number", ""),
             })
-    if org_id:                                    # the signed-in organisation's own OpenFeed (CDR) accounts
+    if org_id:                                    # the signed-in organisation's own OpenFeed (CDR) accounts - only if its plan includes live bank feeds
         from accfino_core import openfeed_cdr as _OF
+        from accfino_core.subscription import service as _S
         _db = _SL()
         try:
+            if not _S.is_allowed(_S.entitlements(_db, org_id), ("open-banking",)):
+                return out
             for a in _OF.org_accounts(_db, org_id):
                 out.append({"key": f"openfeed:{a['id']}", "provider": "openfeed", "user_id": "", "account_id": a["id"],
                             "bank": a.get("provider", ""), "name": a.get("name", "Account"), "number": a.get("masked", "")})

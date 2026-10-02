@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from accfino_core import openfeed_cdr as OF
 from accfino_core.security import audit
+from accfino_core.subscription import service as S
 from accfino_core.security.context import OrgContext, current_auth, current_org
 from accfino_core.security.login import client_ip
 from db_app.database import get_db
@@ -100,11 +101,15 @@ def platform_config(request: Request, body: dict = Body(...), db: Session = Depe
 def org_status(ctx: OrgContext = Depends(current_org), db: Session = Depends(get_db)):
     out = OF.status(db, ctx.org.id)
     out["can_manage"] = ctx.is_org_admin
+    ent = S.entitlements(db, ctx.org.id)
+    out["plan_allows"] = S.is_allowed(ent, ("open-banking",)) or bool(ctx.is_admin)             # Open banking is a function each plan switches on or off (Admin > Pricing)
+    out["plan_name"] = ent["plan_name"]
     return out
 
 
 @org_router.post("/connect")
 def org_connect(request: Request, body: dict = Body(default={}), ctx: OrgContext = Depends(current_org), db: Session = Depends(get_db)):
+    S.check(db, ctx, ("open-banking",), "POST")                              # 402 when the organisation's plan does not include live bank feeds
     ctx.require_org_admin()
     # the browser sends where it is (a path) and, when the flow runs in a pop-up, its own origin so the pop-up can tell it when it is finished
     return_to = OF.encode_return(str(body.get("return_to") or "/settings/open-banking"), str(body.get("popup_origin") or "") or None)   # never redirect off-site
@@ -120,6 +125,7 @@ def org_connect(request: Request, body: dict = Body(default={}), ctx: OrgContext
 
 @org_router.post("/sync")
 def org_sync(ctx: OrgContext = Depends(current_org), db: Session = Depends(get_db)):
+    S.check(db, ctx, ("open-banking",), "POST")                              # 402 when the organisation's plan does not include live bank feeds
     ctx.require_org_admin()
     try:
         out = OF.sync(db, ctx.org.id, force=True)
@@ -132,6 +138,7 @@ def org_sync(ctx: OrgContext = Depends(current_org), db: Session = Depends(get_d
 
 @org_router.post("/account")
 def org_account(request: Request, body: dict = Body(...), ctx: OrgContext = Depends(current_org), db: Session = Depends(get_db)):
+    S.check(db, ctx, ("open-banking",), "POST")                              # 402 when the organisation's plan does not include live bank feeds
     """Switch ONE shared account on or off in AccFino: {account_id, enabled}."""
     ctx.require_org_admin()
     try:
@@ -147,6 +154,7 @@ def org_account(request: Request, body: dict = Body(...), ctx: OrgContext = Depe
 
 @org_router.post("/pull")
 def org_pull(body: dict = Body(...), ctx: OrgContext = Depends(current_org), db: Session = Depends(get_db)):
+    S.check(db, ctx, ("open-banking",), "POST")                              # 402 when the organisation's plan does not include live bank feeds
     try:
         d_from = date.fromisoformat(str(body.get("from_date"))[:10])
         d_to = date.fromisoformat(str(body.get("to_date"))[:10])
@@ -165,6 +173,7 @@ def org_pull(body: dict = Body(...), ctx: OrgContext = Depends(current_org), db:
 
 @org_router.post("/disconnect")
 def org_disconnect(request: Request, ctx: OrgContext = Depends(current_org), db: Session = Depends(get_db)):
+    S.check(db, ctx, ("open-banking",), "POST")                              # 402 when the organisation's plan does not include live bank feeds
     ctx.require_org_admin()
     OF.disconnect(db, ctx.org.id)
     db.commit()

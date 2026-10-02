@@ -92,10 +92,10 @@ def test_test_button_checks_the_location_and_the_currency(env):
 def test_amounts_follow_the_plan_period_and_add_ons_and_month_ends_are_clamped(env):
     db, org, ctx, mock, sent = env
     sub = db.get(OrgSubscription, org.id)
-    sub.plan_id, sub.addons, sub.billing_period = "essentials", "[]", "monthly"
+    sub.plan_id, sub.addons, sub.billing_period = "essential", "[]", "monthly"
     assert B.amount_for(db, sub) == Decimal("25.00") and B.cents(B.amount_for(db, sub)) == 2500
-    sub.billing_period = "yearly"; assert B.amount_for(db, sub) == Decimal("250.00")
-    sub.addons = json.dumps(["addon-payroll"]); assert B.amount_for(db, sub) == Decimal("400.00")                # 250 + 15 x 10 months
+    sub.billing_period = "yearly"; assert B.amount_for(db, sub) == Decimal("275.00")
+    sub.addons = json.dumps(["addon-payroll"]); assert B.amount_for(db, sub) == Decimal("440.00")                # 275 + 15 x 11 months
     sub.billing_period = "monthly"; assert B.amount_for(db, sub) == Decimal("40.00")
     assert B.add_period(date(2026, 1, 31), "monthly") == date(2026, 2, 28) and B.add_period(date(2028, 2, 29), "yearly") == date(2029, 2, 28)
 
@@ -127,7 +127,7 @@ def test_subscribe_takes_the_first_payment_and_never_twice_for_a_paid_period(env
     assert res["status"] == "paid" and res["amount"] == 25.0 and len(mock.payments) == 1
     sub, b = db.get(OrgSubscription, org.id), db.get(OrgBilling, org.id)
     assert sub.status == "active" and sub.period_end == B.add_period(date.today(), "monthly") and b.auto_renew is True
-    p = mock.payments[0]; assert p["amount_money"] == {"amount": 2500, "currency": "AUD"} and p["location_id"] == "L1" and "essentials" in p["note"].lower()
+    p = mock.payments[0]; assert p["amount_money"] == {"amount": 2500, "currency": "AUD"} and p["location_id"] == "L1" and "essential" in p["note"].lower()
     ch = db.query(BillingCharge).one(); assert ch.status == "paid" and ch.square_payment_id == "PAY-1" and ch.receipt_url
     again = B.subscribe(db, org.id, "monthly", ctx.user_id); db.commit()
     assert again["status"] == "scheduled" and len(mock.payments) == 1                                               # already paid up: no second charge
@@ -138,7 +138,7 @@ def test_yearly_subscription_charges_the_yearly_price(env):
     db, org, ctx, mock, sent = env
     add_card(db, org, ctx)
     res = B.subscribe(db, org.id, "yearly", ctx.user_id); db.commit()
-    assert res["amount"] == 250.0 and db.get(OrgSubscription, org.id).period_end == B.add_period(date.today(), "yearly")
+    assert res["amount"] == 275.0 and db.get(OrgSubscription, org.id).period_end == B.add_period(date.today(), "yearly")
 
 
 def test_a_declined_first_payment_is_reported_and_does_not_activate(env):
@@ -221,7 +221,7 @@ def test_trial_converts_to_paid_on_the_trial_end_date_and_free_plans_just_roll_o
     sub = db.get(OrgSubscription, org.id); sub.status, sub.trial_ends, sub.period_end = "trial", date.today(), None; db.commit()
     assert B.run_due(lambda: db_factory(db), today=date.today())["paid"] == 1 and db.get(OrgSubscription, org.id).status == "active"
     from accfino_core.subscription.models import Plan
-    db.get(Plan, "essentials").price_monthly = Decimal("0"); sub = db.get(OrgSubscription, org.id); sub.period_end = date.today(); db.commit()
+    db.get(Plan, "essential").price_monthly = Decimal("0"); sub = db.get(OrgSubscription, org.id); sub.period_end = date.today(); db.commit()
     n = len(mock.payments); assert B.run_due(lambda: db_factory(db), today=date.today())["free"] == 1 and len(mock.payments) == n
 
 
@@ -273,7 +273,7 @@ def test_http_only_the_organisation_admin_manages_billing_and_nothing_secret_is_
     out = c.post("/org/current/billing/card", json={"source_id": "cnon:card-1"}).json()
     assert out["card"]["last4"] == "1111" and "cnon" not in json.dumps(out)
     sub = c.post("/org/current/billing/subscribe", json={"billing_period": "yearly"}).json()
-    assert sub["charge"]["status"] == "paid" and sub["amount_next"] == 250.0 and sub["auto_renew"] is True and sub["charges"][0]["status"] == "paid"
+    assert sub["charge"]["status"] == "paid" and sub["amount_next"] == 275.0 and sub["auto_renew"] is True and sub["charges"][0]["status"] == "paid"
     assert c.post("/org/current/billing/auto-renew", json={"enabled": False}).json()["auto_renew"] is False
 
 

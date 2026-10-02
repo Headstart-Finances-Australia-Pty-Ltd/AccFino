@@ -338,7 +338,7 @@ def ensure_demo_licences():
                 lic = LicenceRecord(
                     user_id      = user.id,
                     licence_type = "admin" if is_admin else "base",
-                    plan_id      = "premium" if is_admin else "base",
+                    plan_id      = "complete" if is_admin else "essentials",
                     payment_mode = "",
                     start_date   = today_s,
                     end_date     = "9999-12-31" if is_admin else str(today + timedelta(days=183)),
@@ -354,8 +354,8 @@ def ensure_demo_licences():
                     lic.end_date = "9999-12-31" if is_admin else str(today + timedelta(days=183)); changed = True
                 if not lic.licence_type or lic.licence_type == "demo":
                     lic.licence_type = "admin" if is_admin else "base"; changed = True
-                if is_admin and lic.plan_id in ("admin", "", None):
-                    lic.plan_id = "premium"; changed = True
+                if is_admin and lic.plan_id in ("admin", "premium", "base", "", None):
+                    lic.plan_id = "complete"; changed = True
                 if is_admin and lic.end_date != "9999-12-31":
                     lic.end_date = "9999-12-31"; changed = True
                 if not lic.modules or lic.modules == "":

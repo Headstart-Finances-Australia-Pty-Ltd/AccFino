@@ -349,6 +349,15 @@ def run(engine, SessionLocal) -> None:
     else:
         log.warning("migrate: non-PostgreSQL database; integrity triggers not installed")
 
+    try:                                           # one price list: legacy plan table mirrors the organisation plans, old plans are retired, the administrator has the top plan
+        from sqlalchemy.orm import Session as _S2
+        from accfino_core.subscription.align import run_alignment
+        with _S2(engine) as _adb:
+            run_alignment(_adb)
+            _adb.commit()
+    except Exception as e:
+        log.warning("plan alignment skipped: %s", e)
+
     # Signing up used to create a per-user "base plan" licence record (Dashboard + Reconciliation only). Licensing is per organisation now
     # (plans by business domain), so remove those auto-created records - only ones nobody has edited (default module list + default note).
     try:

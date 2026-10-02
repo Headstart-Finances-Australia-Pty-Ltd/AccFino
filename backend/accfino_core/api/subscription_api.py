@@ -25,6 +25,7 @@ from accfino_core.security import audit
 from accfino_core.security.context import OrgContext, current_auth, current_org
 from accfino_core.security.login import client_ip
 from accfino_core.subscription import service as S
+from accfino_core.subscription import align as AL
 from accfino_core.subscription.models import Addon, OrgSubscription, Plan
 from db_app.database import get_db
 
@@ -114,7 +115,7 @@ def admin_overview(request: Request, db: Session = Depends(get_db)):
                          addons=S._loads(sub.addons) if sub else [], status=sub.status if sub else None, billing_period=sub.billing_period if sub else None,
                          trial_ends=sub.trial_ends.isoformat() if sub and sub.trial_ends else None, period_end=sub.period_end.isoformat() if sub and sub.period_end else None,
                          notes=sub.notes if sub else None, effective_status=S.entitlements(db, o.id)["status"]))
-    return {"settings": S.get_settings(db), "catalogue": [dict(id=i, name=n) for i, n in S.CATALOGUE], "domains": [dict(id=i, name=n, modules=ms) for i, n, ms in S.DOMAINS],
+    return {"settings": S.get_settings(db), "catalogue": [dict(id=i, name=n) for i, n in S.CATALOGUE], "features": [dict(id=i, name=n, description=d) for i, n, d in S.FEATURES], "domains": [dict(id=i, name=n, modules=ms) for i, n, ms in S.DOMAINS],
             "plans": [_plan_dict(p) for p in db.query(Plan).order_by(Plan.sort_order)], "addons": [_addon_dict(a) for a in db.query(Addon).order_by(Addon.sort_order)],
             "organisations": orgs}
 
@@ -163,6 +164,7 @@ def admin_save_plan(plan_id: str, body: PlanIn, request: Request, db: Session = 
         db.add(p)
     p.name, p.description, p.seat_limit, p.is_active, p.sort_order = body.name.strip()[:100], body.description, body.seat_limit, body.is_active, body.sort_order
     p.price_monthly, p.price_yearly, p.modules = monthly, yearly, json.dumps(mods)
+    AL.sync_pricing_plans(db)                                   # the old plan table follows the plans
     db.commit()
     audit.write("admin.plan_saved", user_id=auth["user_id"], username=auth["username"], entity="plan", entity_id=plan_id, ip=client_ip(request), detail=_plan_dict(p))
     return _plan_dict(p)
@@ -180,6 +182,7 @@ def admin_delete_plan(plan_id: str, request: Request, db: Session = Depends(get_
     if S.get_settings(db)["default_plan"] == plan_id:
         raise HTTPException(409, "This is the default plan for new organisations. Choose another default first.")
     db.delete(p)
+    AL.sync_pricing_plans(db)                                   # the old plan table follows the plans
     db.commit()
     audit.write("admin.plan_deleted", user_id=auth["user_id"], username=auth["username"], entity="plan", entity_id=plan_id, ip=client_ip(request))
     return {"ok": True}

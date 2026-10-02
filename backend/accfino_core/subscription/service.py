@@ -39,6 +39,12 @@ DOMAINS = [
 DOMAIN_IDS = [d[0] for d in DOMAINS]
 DOMAIN_MODULES = {d[0]: list(d[2]) for d in DOMAINS}
 
+# FUNCTIONS: things a plan can switch on or off that are not a menu module. They are ticked separately from the business domains in Admin > Pricing > Edit plan ("Functions").
+FEATURES = [
+    ("open-banking", "Open banking - live bank feeds", "Connect bank accounts (Basiq, OpenFeed) so transactions arrive without statement files. Settings > Open Banking and the reconciliation bank-feed input."),
+]
+FEATURE_IDS = [f[0] for f in FEATURES]
+
 # Every sellable module, in domain order. The accounting modules are also gated on the server (see install()); a locked module in the other
 # domains is hidden from the menu and its tabs.
 CATALOGUE = [
@@ -94,6 +100,7 @@ CATALOGUE = [
     ('engagements-workflows', 'Engagements & Workflows'),
     ('billing', 'Billing'),
 ]
+CATALOGUE += [(f[0], f[1]) for f in FEATURES]
 CATALOGUE_IDS = [c[0] for c in CATALOGUE]
 
 
@@ -121,18 +128,18 @@ def expand(mods) -> set:
 # AccFino: unlimited invoices, bills and bank rules on every plan; the plan decides WHICH BUSINESS DOMAINS you get and how many users.
 # Yearly = 10 x monthly (two months free). All of this is editable in Admin > Modules Management > Subscriptions.
 # ---------------------------------------------------------------------------------------------------------------------------------
-_CORE = ["dashboard-accounting", "general-ledger", "reconciliation", "sales", "purchases", "financial-reports"]
 DEFAULT_PLANS = [
-    dict(id="essentials", name="Essentials", description="Books for a sole trader or one-person business: ledger, banking, sales, purchases, reports and cash-flow forecasting. Unlimited invoices and bills. 1 user.",
-         price_monthly="25.00", price_yearly="250.00", seat_limit=1, modules=_CORE + ["cash-flow-forecasting"], sort_order=1),
-    dict(id="business", name="Business", description="The whole Books & Accounting domain (expenses, inventory, fixed assets, bulk import) plus Planning & Intelligence, for a small team. 3 users.",
-         price_monthly="59.00", price_yearly="590.00", seat_limit=3, modules=["domain:accounting", "domain:planning_insights"], sort_order=2),
-    dict(id="professional", name="Professional", description="Books + Payroll & Workforce + Taxation & Compliance + Planning & Intelligence, for a growing team. 6 users.",
-         price_monthly="99.00", price_yearly="990.00", seat_limit=6, modules=["domain:accounting", "domain:payroll_workforce", "domain:tax_compliance", "domain:planning_insights"], sort_order=3),
-    dict(id="complete", name="Complete", description="Every business domain, including Assets & Investments, Smart Lending & Treasury and Practice, for larger teams. 15 users.",
-         price_monthly="179.00", price_yearly="1790.00", seat_limit=15, modules=["*"], sort_order=4),
+    dict(id="essential", name="Essential", description="The whole Books & Accounting domain: ledger, banking and reconciliation, sales, purchases, expenses, inventory, fixed assets, reports and bulk import. Unlimited invoices and bills. 1 user.",
+         price_monthly="25.00", price_yearly="275.00", seat_limit=1, modules=["domain:accounting", "open-banking"], sort_order=1),
+    dict(id="business", name="Business", description="Everything in Essential plus Planning & Intelligence (cash-flow forecasting, budgets, scenarios, management reporting). 1 user.",
+         price_monthly="59.00", price_yearly="649.00", seat_limit=1, modules=["domain:accounting", "domain:planning_insights", "open-banking"], sort_order=2),
+    dict(id="professional", name="Professional", description="Books + Payroll & Workforce + Taxation & Compliance + Planning & Intelligence. 1 user.",
+         price_monthly="99.00", price_yearly="1089.00", seat_limit=1, modules=["domain:accounting", "domain:payroll_workforce", "domain:tax_compliance", "domain:planning_insights", "open-banking"], sort_order=3),
+    dict(id="ultra", name="Ultra", description="Every business domain, including Assets & Investments, Smart Lending & Treasury and Practice. 1 user.",
+         price_monthly="179.00", price_yearly="1969.00", seat_limit=1, modules=["*"], sort_order=4),
 ]
-# One add-on per domain (so a small plan can bolt on exactly the domain it needs), a few single-module packs, and extra users.
+# Yearly = 11 x monthly (one month free). EVERY plan is for 1 user; more users come in a user pack arranged with the AccFino team (an add-on with extra_seats, priced per organisation).
+# Add-ons: one per business domain (a plan can bolt on exactly the domain it needs). Books & Accounting needs none: every plan has all of it.
 DEFAULT_ADDONS = [
     dict(id="addon-payroll", name="Payroll & Workforce", description="Employees, timesheets, pay runs, payslips and STP.", price_monthly="15.00", modules=["domain:payroll_workforce"], extra_seats=0, sort_order=1),
     dict(id="addon-tax", name="Taxation & Compliance", description="Tax returns, CGT, GST/BAS/IAS and ATO lodgement.", price_monthly="15.00", modules=["domain:tax_compliance"], extra_seats=0, sort_order=2),
@@ -140,20 +147,11 @@ DEFAULT_ADDONS = [
     dict(id="addon-assets", name="Assets, Investments & Wealth", description="Shares, crypto, property and portfolio tracking.", price_monthly="12.00", modules=["domain:assets_investments"], extra_seats=0, sort_order=4),
     dict(id="addon-lending", name="Smart Lending, Credit & Treasury", description="Credit assessment, loans, collections and treasury.", price_monthly="19.00", modules=["domain:lending_treasury"], extra_seats=0, sort_order=5),
     dict(id="addon-practice", name="Practice & Client Services", description="Client entities, workpapers, engagements, portal and billing for accountants and bookkeepers.", price_monthly="25.00", modules=["domain:practice"], extra_seats=0, sort_order=6),
-    dict(id="addon-inventory", name="Inventory", description="Stock items, movements and valuation.", price_monthly="12.00", modules=["inventory-trading"], extra_seats=0, sort_order=7),
-    dict(id="addon-expenses", name="Expense claims", description="Employee expense claims with approval and reimbursement.", price_monthly="6.00", modules=["expenses"], extra_seats=0, sort_order=8),
-    dict(id="addon-fixed-assets", name="Fixed assets", description="Asset register and depreciation.", price_monthly="10.00", modules=["fixed-assets"], extra_seats=0, sort_order=9),
-    dict(id="addon-bulk-import", name="Bulk data import", description="CSV upload of journals, contacts, documents, stock and assets.", price_monthly="8.00", modules=["bulk-import"], extra_seats=0, sort_order=10),
-    dict(id="addon-seat-1", name="1 extra user", description="Adds one more user seat.", price_monthly="6.00", modules=[], extra_seats=1, sort_order=11),
-    dict(id="addon-seats-5", name="5 extra users", description="Adds five more user seats (A$5 per user).", price_monthly="25.00", modules=[], extra_seats=5, sort_order=12),
 ]
+YEARLY_MONTHS = 11              # a year is charged as 11 months: one month free
 CATALOGUE_VERSION_KEY = "platform.catalogue_version"
-CATALOGUE_VERSION = "3"          # 1 = original Starter/Growth/Premium; 2 = domain-based plans; 3 = seats scale with price (1/3/6/15) + extra-user add-ons
-_OLD_PLAN_IDS = ("starter", "growth", "premium")
-# What version 2 shipped (seats, description start) - a plan is only moved to version 3 while it still looks exactly like this (i.e. nobody edited it).
-_V2_PLANS = {"essentials": (3, "Books for a small business: ledger, banking, sales, purchases and reports."), "business": (10, "The whole Books & Accounting domain"),
-             "professional": (25, "Books + Payroll & Workforce + Taxation & Compliance + Planning & Intelligence. 25"), "complete": (None, "Every business domain, including")}
-_OLD_ADDON_IDS = ("addon-bulk-import", "addon-expenses", "addon-inventory", "addon-fixed-assets", "addon-seats-5")
+CATALOGUE_VERSION = "6"          # 6 = 'Open banking' became a function each plan switches on or off (Admin > Pricing > Edit plan); 5 = ONE price list: Essential / Business / Professional / Ultra, 1 user each (more users in an arranged pack), yearly = 11 months; every older plan removed; enforced
+
 
 
 def _loads(s):
@@ -173,64 +171,41 @@ def _addon_row(a):
 
 
 def ensure_catalogue(db: Session):
-    """Create the starting plans/add-ons the first time. An installation still on the original Starter/Growth/Premium set is moved ONCE to the
-    domain-based plans: the new plans are added, the old default plans are retired (hidden from new sign-ups, but organisations already on them keep
-    working and keep their modules), and the default plan for new organisations becomes Essentials. Anything an administrator added is never touched."""
-    if db.query(Plan).count() == 0:
+    """The ONE price list. A fresh database gets Starter / Business / Professional / Complete and the add-ons. An existing one is moved once (version 4) by
+    align.migrate_catalogue: organisations on any older plan are assigned to the new plans, every older plan and redundant add-on is deleted, seats become 1 per plan (extra users in per-organisation packs) and plans are enforced."""
+    if db.query(Plan).count() == 0 and db.query(Addon).count() == 0:
         for p in DEFAULT_PLANS:
             db.add(_plan_row(p))
-    if db.query(Addon).count() == 0:
         for a in DEFAULT_ADDONS:
             db.add(_addon_row(a))
-    db.flush()
+        for key, val in ((DEFAULT_PLAN_KEY, "essential"), (ENFORCED_KEY, "on"), (CATALOGUE_VERSION_KEY, CATALOGUE_VERSION)):
+            row = db.get(m.SystemSetting, key)
+            if row is None:
+                db.add(m.SystemSetting(key=key, value=val))
+            else:
+                row.value = val
+        db.flush()
+        return
     ver = db.get(m.SystemSetting, CATALOGUE_VERSION_KEY)
     have = (ver.value or "0") if ver is not None else "0"
     if have >= CATALOGUE_VERSION:
         return
-    if have < "2":                                                                # v1 -> v2: domain-based plans
-        for p in DEFAULT_PLANS:
-            if db.get(Plan, p["id"]) is None:
-                db.add(_plan_row(p))
-        for pid in _OLD_PLAN_IDS:
-            old = db.get(Plan, pid)
-            if old is not None:
-                old.is_active = False
-        for a in DEFAULT_ADDONS:
-            row = db.get(Addon, a["id"])
-            if row is None:
-                db.add(_addon_row(a))
-            elif a["id"] in _OLD_ADDON_IDS and row.price_monthly in (Decimal("10.00"), Decimal("15.00"), Decimal("25.00")):      # unedited v1 price -> current price
-                row.price_monthly, row.description = Decimal(a["price_monthly"]), a["description"]
-        cfg = db.get(m.SystemSetting, DEFAULT_PLAN_KEY)
-        if cfg is None:
-            db.add(m.SystemSetting(key=DEFAULT_PLAN_KEY, value="essentials"))
-        elif (cfg.value or "starter") in _OLD_PLAN_IDS:
-            cfg.value = "essentials"
-        db.flush()
-    if have < "3":                                                                # v2 -> v3: users scale with price; extra-user add-ons
-        for p in DEFAULT_PLANS:
-            row = db.get(Plan, p["id"])
-            if row is None:
-                db.add(_plan_row(p))
-            elif p["id"] in _V2_PLANS and row.seat_limit == _V2_PLANS[p["id"]][0] and (row.description or "").startswith(_V2_PLANS[p["id"]][1]):
-                row.seat_limit, row.description = p["seat_limit"], p["description"]                                          # untouched v2 plan -> new users + wording
-        for a in DEFAULT_ADDONS:
-            row = db.get(Addon, a["id"])
-            if row is None:
-                db.add(_addon_row(a))
-            elif a["id"] == "addon-seats-5" and row.price_monthly == Decimal("15.00"):                                         # unedited v2 pack -> A$5 per user
-                row.price_monthly, row.description = Decimal(a["price_monthly"]), a["description"]
-    if ver is None:
+    if ver is None:                                              # set first: the migration itself reads plans and must not start another migration
         db.add(m.SystemSetting(key=CATALOGUE_VERSION_KEY, value=CATALOGUE_VERSION))
     else:
         ver.value = CATALOGUE_VERSION
     db.flush()
+    from accfino_core.subscription.align import add_feature_to_plans, migrate_catalogue
+    if have < "5":
+        migrate_catalogue(db, have)
+    else:
+        add_feature_to_plans(db, "open-banking")                  # version 5 -> 6: every plan keeps live bank feeds, now as a switch an administrator can turn off per plan
 
 
 def get_settings(db: Session) -> dict:
     e = db.get(m.SystemSetting, ENFORCED_KEY)
     d = db.get(m.SystemSetting, DEFAULT_PLAN_KEY)
-    return {"enforced": bool(e and (e.value or "").lower() == "on"), "default_plan": (d.value if d and d.value else "essentials")}
+    return {"enforced": True if e is None else (e.value or "").lower() == "on", "default_plan": (d.value if d and d.value else "essential")}
 
 
 def set_settings(db: Session, enforced=None, default_plan=None):
@@ -275,7 +250,7 @@ def entitlements(db: Session, org_id: int, today: date = None) -> dict:
     cfg = get_settings(db)
     sub = db.get(OrgSubscription, org_id)
     used = member_count(db, org_id)
-    base = dict(enforced=cfg["enforced"], seats_used=used, catalogue=[dict(id=i, name=n) for i, n in CATALOGUE], domains=[dict(id=i, name=n, modules=ms) for i, n, ms in DOMAINS])
+    base = dict(enforced=cfg["enforced"], seats_used=used, catalogue=[dict(id=i, name=n) for i, n in CATALOGUE], features=[dict(id=i, name=n, description=d) for i, n, d in FEATURES], domains=[dict(id=i, name=n, modules=ms) for i, n, ms in DOMAINS])
     if sub is None or db.get(Plan, sub.plan_id) is None:
         return {**base, "grandfathered": True, "plan_id": None, "plan_name": "All modules (no plan assigned)", "status": "active", "read_only": False,
                 "modules": list(CATALOGUE_IDS), "locked": [], "seats": None, "addons": [], "trial_ends": None, "period_end": None, "billing_period": None}

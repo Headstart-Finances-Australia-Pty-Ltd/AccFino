@@ -270,6 +270,11 @@ def register(
             "basic":          ["dashboard", "reconciliation", "trading", "cash-flow", "invoice"],
             "premium":        ["dashboard", "reconciliation", "trading", "cash-flow", "invoice"],
             "ultra":          ["dashboard", "reconciliation", "trading", "cash-flow", "invoice"],
+            # the current organisation plans
+            "essentials":     ["dashboard", "accounting", "reconciliation", "invoice", "cash-flow"],
+            "business":       ["dashboard", "accounting", "reconciliation", "invoice", "cash-flow"],
+            "professional":   ["dashboard", "accounting", "reconciliation", "invoice", "cash-flow", "payroll", "trading"],
+            "complete":       ["dashboard", "accounting", "reconciliation", "invoice", "cash-flow", "payroll", "trading", "lending"],
         }
         selected_plan = getattr(request, 'plan_id', 'base') or 'base'
         plan_modules  = PLAN_MODULES.get(selected_plan, PLAN_MODULES["base"])

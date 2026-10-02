@@ -109,7 +109,7 @@ def add_period(d: date, period: str) -> date:
 
 
 def amount_for(db, sub: OrgSubscription, period: Optional[str] = None) -> Decimal:
-    """Plan price for the period + each add-on (add-ons are priced monthly; a year is 10 months, the same 'two months free' as the plans). AUD incl. GST."""
+    """Plan price for the period + each add-on (add-ons are priced monthly; a year is 11 months, the same 'one month free' as the plans). AUD incl. GST."""
     period = period or sub.billing_period or "monthly"
     plan = db.get(Plan, sub.plan_id)
     if plan is None:
@@ -118,7 +118,7 @@ def amount_for(db, sub: OrgSubscription, period: Optional[str] = None) -> Decima
     for aid in dict.fromkeys(S._loads(sub.addons)):
         a = db.get(Addon, aid)
         if a:
-            total += Decimal(a.price_monthly) * (10 if period == "yearly" else 1)
+            total += Decimal(a.price_monthly) * (S.YEARLY_MONTHS if period == "yearly" else 1)
     return total.quantize(Decimal("0.01"))
 
 

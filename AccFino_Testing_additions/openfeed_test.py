@@ -724,3 +724,23 @@ def test_http_per_account_switch_is_organisation_admin_only(env):
     assert out["accounts"][0]["enabled"] is False and out["status"] == "active"
     assert c.post("/org/current/open-banking/account", json={"account_id": "zzz", "enabled": True}).status_code == 404
     assert [a["id"] for a in c.get("/org/current/open-banking").json()["accounts"] if a["enabled"]] == ["acc2", "acc3"]
+
+
+# ------------------------------------------------------------------------------------------------ the plan's "Open banking" function
+def test_a_plan_without_open_banking_cannot_connect_and_the_status_says_why(env):
+    from accfino_core.subscription import service as S
+    from accfino_core.subscription.models import OrgSubscription, Plan
+    db, org, ctx, mock = env
+    S.ensure_catalogue(db); db.query(OrgSubscription).delete(); db.add(OrgSubscription(org_id=org.id, plan_id="essential", status="active")); db.commit()
+    c, st = http_client(db, org, ctx)
+    assert c.get("/org/current/open-banking").json()["plan_allows"] is True                                          # included by default
+    assert c.post("/org/current/open-banking/connect").status_code == 200
+    db.get(Plan, "essential").modules = json.dumps(["domain:accounting"]); db.commit()                                 # an administrator switches the function off for the plan
+    s = c.get("/org/current/open-banking").json()
+    assert s["plan_allows"] is False and s["plan_name"] == "Essential"
+    for call in (lambda: c.post("/org/current/open-banking/connect"), lambda: c.post("/org/current/open-banking/sync"), lambda: c.post("/org/current/open-banking/disconnect"),
+                 lambda: c.post("/org/current/open-banking/account", json={"account_id": "a", "enabled": False}),
+                 lambda: c.post("/org/current/open-banking/pull", json={"account_id": "a", "from_date": "2026-09-01", "to_date": "2026-09-30"})):
+        r = call(); assert r.status_code == 402 and "Open banking" in r.json()["detail"]
+    st["admin"] = True                                                                                                # platform administrators are never blocked
+    assert c.get("/org/current/open-banking").json()["plan_allows"] is True

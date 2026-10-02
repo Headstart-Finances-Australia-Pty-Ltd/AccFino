@@ -417,7 +417,7 @@ def admin_only_calls(org_id, other_user_id):
         ("GET", "/org/current/admin/overview", None), ("POST", "/org/current/transfer-admin", {"new_admin_user_id": other_user_id, "password": PW}),
         ("GET", "/org/current/invites", None), ("POST", "/org/current/invites", {"role": "readonly"}), ("DELETE", "/org/current/invites/1", None),
         ("GET", "/org/current/tenant", None), ("PATCH", "/org/current/tenant", {"contact_email": "evil@example.com", "discoverable": False}),
-        ("POST", "/org/current/subscription/request", {"plan_id": "complete"}),
+        ("POST", "/org/current/subscription/request", {"plan_id": "ultra"}),
         ("GET", "/org/current/access-policy", None), ("PUT", "/org/current/access-policy", {"state": "off", "applies_to": "all", "require_mfa": False}),
         ("GET", "/org/current/identity/members", None), ("GET", f"/org/current/identity/members/{other_user_id}", None),
         ("POST", f"/org/current/identity/members/{other_user_id}/suspend", {}), ("POST", f"/org/current/identity/members/{other_user_id}/restore", None),
@@ -591,7 +591,7 @@ def test_no_organisation_message_is_ever_sent_to_a_non_admin_address(env):
     c.patch("/org/current", json={"name": "Renamed Again"}, headers=h)
     c.post("/org/current/lock-date", json={"lock_date": "2026-03-31"}, headers=h)
     c.put("/org/current/access-policy", json={"state": "off", "applies_to": "all", "require_mfa": False}, headers=h)
-    c.post("/org/current/subscription/request", json={"plan_id": "complete"}, headers=h)
+    c.post("/org/current/subscription/request", json={"plan_id": "ultra"}, headers=h)
     c.post("/org/current/invites", json={"role": "readonly"}, headers=h)
     org_level = [(t, s) for t, s, _ in mails if "access to" not in s]
     assert org_level and all(t == owner for t, _ in org_level), org_level
@@ -629,7 +629,7 @@ def test_subscription_changes_by_platform_support_notify_the_admin(env):
     async def _a(request, call_next):
         request.state.auth = {"user_id": 1, "username": "root", "is_admin": True}; return await call_next(request)
     app2.dependency_overrides[get_db] = lambda: db
-    r = TestClient(app2).put(f"/admin/subscriptions/orgs/{org_id}", json={"plan_id": "complete", "addons": [], "status": "expired", "billing_period": "monthly"})
+    r = TestClient(app2).put(f"/admin/subscriptions/orgs/{org_id}", json={"plan_id": "ultra", "addons": [], "status": "expired", "billing_period": "monthly"})
     assert r.status_code == 200, r.text
     assert tos(mails) == ["owner@alpha.example"] and "expired" in mails[0][1].lower()
 

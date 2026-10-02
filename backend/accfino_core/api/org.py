@@ -140,7 +140,7 @@ def get_current(ctx: OrgContext = Depends(current_org), db: Session = Depends(ge
     # The organisation's own web address (https://<name>.<TENANT_BASE_DOMAIN>) is for EVERY member: it is where they sign in. tenant_url is None until
     # TENANT_BASE_DOMAIN is configured for the installation (see docs/ORG_ADMIN.md).
     out.update(slug=prof.slug if prof else None, tenant_url=_T.tenant_url(prof.slug) if prof else None, tenant_urls_enabled=bool(_T.base_domain()))
-    out.update(is_org_admin=ctx.is_org_admin, admin_name=c["name"])            # members see who to contact; email/phone are for the admin's own screens
+    out.update(is_org_admin=ctx.is_org_admin, platform_admin=bool(ctx.is_admin), admin_name=c["name"])            # members see who to contact; email/phone are for the admin's own screens
     if ctx.is_org_admin:
         out.update(admin_email=c["email"], admin_phone=c["phone"], admin_user_id=c["user_id"])
     return out

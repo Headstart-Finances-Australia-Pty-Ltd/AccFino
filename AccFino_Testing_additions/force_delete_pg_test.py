@@ -134,7 +134,7 @@ def test_directory_lists_orgs_with_contact_licence_and_users(world):
     assert [a["email"] for a in d["platform_admins"]] == ["admin@accfino.com"] and d["platform_admins"][0]["protected"]
     alpha = next(o for o in d["organisations"] if o["name"] == "Alpha Pty Ltd")
     assert alpha["admin"]["email"] == "u1@example.com" and alpha["admin"]["phone"].startswith("+61")
-    assert alpha["licence"]["plan_name"] == "Essentials" and alpha["licence"]["seats"] == 3 and alpha["licence"]["active_users"] == 2 and alpha["user_count"] == 2
+    assert alpha["licence"]["plan_name"] == "Essential" and alpha["licence"]["seats"] == 1 and alpha["licence"]["active_users"] == 2 and alpha["user_count"] == 2
     assert [(u["email"], u["role"]) for u in alpha["users"]] == [("u1@example.com", "owner"), ("u2@example.com", "accountant")]
     assert [u["email"] for u in d["unassigned_users"]] == ["u5@example.com"]
     from fastapi import HTTPException

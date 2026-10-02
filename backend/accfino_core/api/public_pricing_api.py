@@ -34,7 +34,10 @@ def public_pricing(response: Response, db: Session = Depends(get_db)):
                       "seat_limit": p.seat_limit, **_names(S._loads(p.modules))})
     addons = []
     for a in db.query(Addon).filter_by(is_active=True).order_by(Addon.sort_order, Addon.id):
+        if (a.extra_seats or 0) > 0:                       # user packs are arranged with the AccFino team for each organisation: never listed with a public price
+            continue
         addons.append({"id": a.id, "name": a.name, "description": a.description or "", "price_monthly": float(a.price_monthly), "extra_seats": a.extra_seats or 0,
                        **_names(S._loads(a.modules))})
-    return {"currency": "AUD", "gst_included": True, "plans": plans, "addons": addons,
+    return {"currency": "AUD", "gst_included": True, "yearly_months": S.YEARLY_MONTHS, "plans": plans, "addons": addons,
+            "extra_users": "Every plan is for 1 user. Need more? A user pack is arranged with the AccFino team to suit your organisation.",
             "domains": [{"id": i, "name": n, "module_count": len(ms)} for i, n, ms in S.DOMAINS]}

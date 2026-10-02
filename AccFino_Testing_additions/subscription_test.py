@@ -1,4 +1,5 @@
 """Tests for per-organisation subscriptions. Run from backend/:  PYTHONPATH=. python -m pytest ../AccFino_Testing_additions/subscription_test.py -q"""
+import json
 import os, sys
 from datetime import date, timedelta
 import pytest
@@ -41,44 +42,46 @@ def fake_ctx(ctx, org, admin=False):
 
 
 # ---------------------------------------------------------------------------------------------- the rules
-def test_default_catalogue_and_off_by_default(env):
+def test_default_catalogue_and_on_by_default(env):
     db, org, ctx = env
-    assert {p.id for p in db.query(S.Plan)} == {"essentials", "business", "professional", "complete"}
+    assert {p.id for p in db.query(S.Plan)} == {"essential", "business", "professional", "ultra"}
     ent = S.entitlements(db, org.id)
-    assert ent["enforced"] is False and ent["locked"] == [] and ent["grandfathered"]           # an organisation with no row is never locked
-    assign(db, org, "essentials")                                                                 # even on Starter, nothing is locked while enforcement is off
-    assert S.entitlements(db, org.id)["locked"] == []
-    S.check(db, fake_ctx(ctx, org), ("inventory-trading",))                                    # no exception
+    assert ent["enforced"] is True and ent["locked"] == [] and ent["grandfathered"]            # an organisation with no row is never locked
+    assign(db, org, "essential")
+    assert "employees" in S.entitlements(db, org.id)["locked"]                                  # plans are applied by default
+    S.check(db, fake_ctx(ctx, org), ("inventory-trading",))                                     # all of Books & Accounting is in Starter: no exception
+    enforce(db, False)
+    assert S.entitlements(db, org.id)["locked"] == []                                           # an administrator can still switch enforcement off
 
 
-def test_starter_locks_modules_and_blocks_the_api(env):
+def test_starter_locks_every_other_domain_and_blocks_the_api(env):
     db, org, ctx = env
-    assign(db, org, "essentials"); enforce(db)
+    assign(db, org, "essential"); enforce(db)
     ent = S.entitlements(db, org.id)
-    assert {"expenses", "inventory-trading", "fixed-assets", "bulk-import"} <= set(ent["locked"]) and ent["seats"] == 1
-    assert not {"sales", "purchases", "general-ledger", "reconciliation", "financial-reports", "cash-flow-forecasting"} & set(ent["locked"])
-    assert {"employees", "tax-returns", "shares-etfs", "practice-management"} <= set(ent["locked"])                    # the other domains are not in Essentials
-    S.check(db, fake_ctx(ctx, org), ("sales",))
+    assert {"employees", "tax-returns", "shares-etfs", "practice-management", "cash-flow-forecasting", "credit-assessment"} <= set(ent["locked"]) and ent["seats"] == 1
+    assert not set(S.DOMAIN_MODULES["accounting"]) & set(ent["locked"])                         # every Books & Accounting module is in Starter
+    S.check(db, fake_ctx(ctx, org), ("sales",)); S.check(db, fake_ctx(ctx, org), ("expenses",))
     with pytest.raises(HTTPException) as e:
-        S.check(db, fake_ctx(ctx, org), ("expenses",))
-    assert e.value.status_code == 402 and "Essentials" in e.value.detail
-    S.check(db, fake_ctx(ctx, org, admin=True), ("expenses",))                                 # platform admins are never blocked
-    S.check(db, fake_ctx(ctx, org), ("sales", "purchases"))                                     # several ids = any of them
+        S.check(db, fake_ctx(ctx, org), ("employees",))
+    assert e.value.status_code == 402 and "Essential" in e.value.detail
+    S.check(db, fake_ctx(ctx, org, admin=True), ("employees",))                                 # platform admins are never blocked
+    S.check(db, fake_ctx(ctx, org), ("employees", "sales"))                                     # several ids = any of them
 
 
-def test_addon_unlocks_immediately_and_seat_pack_adds_seats(env):
+def test_domain_add_on_unlocks_immediately_and_a_user_pack_adds_seats(env):
     db, org, ctx = env
-    assign(db, org, "essentials"); enforce(db)
-    assign(db, org, "essentials", addons=["addon-inventory", "addon-seats-5", "addon-bulk-import"])
+    assign(db, org, "essential"); enforce(db)
+    db.add(S.Addon(id="addon-pack-test", name="Extra users (arranged)", price_monthly=S.Decimal("30"), modules="[]", extra_seats=4, sort_order=100)); db.commit()   # a pack arranged with the AccFino team
+    assign(db, org, "essential", addons=["addon-payroll", "addon-pack-test"])
     ent = S.entitlements(db, org.id)
-    assert "inventory-trading" in ent["modules"] and "bulk-import" in ent["modules"] and "expenses" in ent["locked"] and ent["seats"] == 6
+    assert set(S.DOMAIN_MODULES["payroll_workforce"]) <= set(ent["modules"]) and "tax-returns" in ent["locked"] and ent["seats"] == 5          # 1 in the plan + 4 in the pack
 
 
-def test_complete_has_every_module_and_15_seats(env):
+def test_ultra_has_every_module_and_1_user(env):
     db, org, ctx = env
-    assign(db, org, "complete"); enforce(db)
+    assign(db, org, "ultra"); enforce(db)
     ent = S.entitlements(db, org.id)
-    assert ent["locked"] == [] and ent["seats"] == 15 and set(ent["modules"]) == set(S.CATALOGUE_IDS)
+    assert ent["locked"] == [] and ent["seats"] == 1 and set(ent["modules"]) == set(S.CATALOGUE_IDS) and ent["plan_name"] == "Ultra"
 
 
 def test_expired_subscription_is_read_only_not_deleted(env):
@@ -100,17 +103,15 @@ def test_expired_subscription_is_read_only_not_deleted(env):
 
 def test_seat_limit_blocks_new_members_only(env):
     db, org, ctx = env
-    assign(db, org, "business"); enforce(db)                   # Business = 3 users
-    for i in range(2):                                          # owner already counts as 1 -> 3 seats used
-        from csv_import_harness import SD
-        u, _ = SD._get_or_create_user(db, f"member{i}@example.com")
-        db.flush(); db.add(m.OrgMembership(org_id=org.id, user_id=u.id, role="bookkeeper")); db.commit()
-    assert S.entitlements(db, org.id)["seats_used"] == 3
+    assign(db, org, "business"); enforce(db)                   # every plan is 1 user: the owner takes it
+    assert S.entitlements(db, org.id)["seats_used"] == 1
     with pytest.raises(HTTPException) as e:
         S.check_seat(db, fake_ctx(ctx, org))
-    assert e.value.status_code == 402 and "3 user" in e.value.detail
-    assign(db, org, "business", addons=["addon-seats-5"]); S.check_seat(db, fake_ctx(ctx, org))  # seat pack frees room
-    assign(db, org, "complete"); S.check_seat(db, fake_ctx(ctx, org))
+    assert e.value.status_code == 402 and "1 user" in e.value.detail
+    db.add(S.Addon(id="addon-pack-test", name="Extra users (arranged)", price_monthly=S.Decimal("30"), modules="[]", extra_seats=2, sort_order=100)); db.commit()
+    assign(db, org, "business", addons=["addon-pack-test"]); S.check_seat(db, fake_ctx(ctx, org))          # a user pack arranged with the team frees room
+    assign(db, org, "ultra"); 
+    with pytest.raises(HTTPException): S.check_seat(db, fake_ctx(ctx, org))                                 # a bigger plan does NOT add users: only a pack does
 
 
 def test_new_organisation_gets_the_default_plan(env):
@@ -144,16 +145,17 @@ def make_client(db, org, ctx, admin=False, role="owner"):
 
 def test_http_upgrade_takes_effect_immediately(env):
     db, org, ctx = env
-    assign(db, org, "essentials"); enforce(db)
+    db.add(S.Plan(id="lite", name="Lite", price_monthly=S.Decimal("5"), price_yearly=S.Decimal("50"), seat_limit=3, modules='["sales", "purchases"]', sort_order=90)); db.commit()   # a small plan, to see a module API refused
+    assign(db, org, "lite"); enforce(db)
     c, st = make_client(db, org, ctx)
     sub = c.get("/org/current/subscription").json()
-    assert "expenses" in sub["locked"] and sub["can_manage"] and {p["id"] for p in sub["plans"]} >= {"essentials", "business", "professional", "complete"}
+    assert "expenses" in sub["locked"] and sub["can_manage"] and {p["id"] for p in sub["plans"]} >= {"essential", "business", "professional", "ultra"}
     r = c.get("/expenses/summary")                                                                       # the module API itself is refused, not just hidden
     assert r.status_code == 402 and "not included" in r.json()["detail"]
-    assert c.get("/imports/status").json() == {"enabled": False}                                 # bulk import is an add-on on Starter
-    assert c.post("/org/current/subscription/request", json={"plan_id": "business", "message": "please"}).json()["ok"]
+    assert c.get("/imports/status").json() == {"enabled": False}
+    assert c.post("/org/current/subscription/request", json={"plan_id": "essential", "message": "please"}).json()["ok"]
     st["admin"] = True                                                                           # the platform administrator applies it
-    out = c.put(f"/admin/subscriptions/orgs/{org.id}", json={"plan_id": "business", "addons": ["addon-bulk-import"], "status": "active"}).json()
+    out = c.put(f"/admin/subscriptions/orgs/{org.id}", json={"plan_id": "essential", "addons": [], "status": "active"}).json()
     assert "expenses" in out["modules"] and "bulk-import" in out["modules"]
     st["admin"] = False
     assert "expenses" not in c.get("/org/current/subscription").json()["locked"]
@@ -168,7 +170,7 @@ def test_http_admin_endpoints_are_admin_only_and_validated(env):
     assert c.put("/admin/subscriptions/settings", json={"enforced": True}).status_code == 403
     st["admin"] = True
     ov = c.get("/admin/subscriptions").json()
-    assert ov["settings"]["enforced"] is False and any(o["org_id"] == org.id for o in ov["organisations"])
+    assert ov["settings"]["enforced"] is True and any(o["org_id"] == org.id for o in ov["organisations"])
     assert c.put("/admin/subscriptions/plans/bad id", json={"name": "x"}).status_code == 422
     assert c.put("/admin/subscriptions/plans/gold", json={"name": "Gold", "modules": ["nope"]}).status_code == 422
     assert c.put("/admin/subscriptions/plans/gold", json={"name": "Gold", "price_monthly": "-5", "modules": ["sales"]}).status_code == 422
@@ -179,7 +181,7 @@ def test_http_admin_endpoints_are_admin_only_and_validated(env):
     assert c.put(f"/admin/subscriptions/orgs/{org.id}", json={"plan_id": "gold", "status": "weird"}).status_code == 422
     assert c.put(f"/admin/subscriptions/orgs/{org.id}", json={"plan_id": "nope"}).status_code == 404
     assert c.put("/admin/subscriptions/settings", json={"enforced": True, "default_plan": "nope"}).status_code == 404
-    c.put(f"/admin/subscriptions/orgs/{org.id}", json={"plan_id": "essentials"})
+    c.put(f"/admin/subscriptions/orgs/{org.id}", json={"plan_id": "essential"})
     assert c.delete("/admin/subscriptions/plans/gold").status_code == 200
     assert c.put("/admin/subscriptions/settings", json={"enforced": True}).json()["enforced"] is True
 
@@ -201,7 +203,7 @@ def test_domain_tokens_expand_and_plans_are_grouped_by_business_domain(env):
         assert set(S.DOMAIN_MODULES[d]) <= set(ent["modules"])
     for d in ("assets_investments", "lending_treasury", "practice"):
         assert set(S.DOMAIN_MODULES[d]) <= set(ent["locked"])
-    assign(db, org, "essentials", addons=["addon-payroll"])                                                # one domain bolted onto a small plan
+    assign(db, org, "essential", addons=["addon-payroll"])                                                # one domain bolted onto a small plan
     ent = S.entitlements(db, org.id)
     assert set(S.DOMAIN_MODULES["payroll_workforce"]) <= set(ent["modules"]) and "tax-returns" in ent["locked"]
 
@@ -211,39 +213,11 @@ def test_every_module_belongs_to_exactly_one_domain_and_matches_the_registry():
     reg = json.loads((pathlib.Path(__file__).parent.parent / "frontend/src/config/modules.json").read_text())
     sellable = {m["id"] for m in reg["modules"] if not m.get("area")}
     server = [i for ms in S.DOMAIN_MODULES.values() for i in ms]
-    assert len(server) == len(set(server)) == len(S.CATALOGUE_IDS)
+    assert len(server) == len(set(server)) == len(S.CATALOGUE_IDS) - len(S.FEATURE_IDS)                   # functions (Open banking) are plan switches, not menu modules
     assert set(server) - {"bulk-import"} == sellable                                                       # bulk-import is a capability, not a menu module
     assert set(S.DOMAIN_IDS) == {d["id"] for d in reg["domains"]}
 
 
-def test_v1_installation_is_moved_once_to_the_new_plans_without_touching_existing_organisations(env):
-    import json
-    from decimal import Decimal
-    db, org, ctx = env
-    for k in (S.CATALOGUE_VERSION_KEY, S.DEFAULT_PLAN_KEY):                                                # rebuild what a v1 database looks like
-        row = db.get(m.SystemSetting, k)
-        if row is not None: db.delete(row)
-    for t in (S.Plan, S.Addon):
-        db.query(t).delete()
-    for pid, name, seats, mods in (("starter", "Starter", 3, ["sales"]), ("growth", "Growth", 10, ["sales", "expenses"]), ("premium", "Premium", None, ["*"])):
-        db.add(S.Plan(id=pid, name=name, price_monthly=Decimal("29"), price_yearly=Decimal("290"), seat_limit=seats, modules=json.dumps(mods), sort_order=1))
-    db.add(S.Plan(id="custom-deal", name="Custom deal", price_monthly=Decimal("5"), price_yearly=Decimal("50"), seat_limit=2, modules="[]", sort_order=9))
-    db.add(S.Addon(id="addon-inventory", name="Inventory", price_monthly=Decimal("15.00"), modules=json.dumps(["inventory-trading"]), sort_order=1))
-    db.commit()
-    assign(db, org, "growth")                                                                              # an organisation already on an old plan
-    S.ensure_catalogue(db); db.commit()
-    plans = {p.id: p for p in db.query(S.Plan)}
-    assert {"essentials", "business", "professional", "complete"} <= set(plans) and plans["custom-deal"].is_active   # admin's own plan untouched
-    assert not any(plans[i].is_active for i in ("starter", "growth", "premium"))                          # retired: no new sign-ups
-    assert S.get_settings(db)["default_plan"] == "essentials"
-    assert db.get(S.Addon, "addon-inventory").price_monthly == Decimal("12.00")                            # unedited v1 add-on re-priced
-    assert db.get(OrgSubscription, org.id).plan_id == "growth" and S.entitlements(db, org.id)["plan_name"] == "Growth"   # existing organisation keeps its plan
-    plans["essentials"].price_monthly = Decimal("27.00"); db.commit()
-    S.ensure_catalogue(db); db.commit()
-    assert db.get(S.Plan, "essentials").price_monthly == Decimal("27.00")                                  # runs once: later edits are never overwritten
-
-
-# ------------------------------------------------------------------------------------------------ public landing page pricing
 def test_public_pricing_is_public_live_and_matches_the_catalogue(env):
     from accfino_core.api import public_pricing_api as PP
     from accfino_core.security.middleware import PUBLIC_ROUTES
@@ -251,14 +225,16 @@ def test_public_pricing_is_public_live_and_matches_the_catalogue(env):
     db, org, ctx = env
     assert "/public/pricing" in PUBLIC_ROUTES                                                      # no sign-in needed for the website
     out = PP.public_pricing(Response(), db)
-    assert [p["id"] for p in out["plans"]] == ["essentials", "business", "professional", "complete"]
-    assert out["plans"][0]["price_monthly"] == 25.0 and out["plans"][3]["seat_limit"] == 15 and out["plans"][3]["all"] is True
+    assert [p["id"] for p in out["plans"]] == ["essential", "business", "professional", "ultra"]
+    assert out["plans"][0]["price_monthly"] == 25.0 and out["plans"][0]["price_yearly"] == 275.0 and out["plans"][3]["seat_limit"] == 1 and out["plans"][3]["all"] is True and out["yearly_months"] == 11
     assert out["plans"][2]["domains"] == ["Books and Accounting", "Payroll & Workforce", "Taxation & Compliance", "Planning & Intelligence"]
-    assert len(out["domains"]) == 7 and any(a["id"] == "addon-seats-5" and a["extra_seats"] == 5 for a in out["addons"])
-    p = db.get(S.Plan, "essentials"); p.price_monthly = S.Decimal("27.00"); db.commit()            # an admin edit shows on the website at once
+    assert len(out["domains"]) == 7 and all(a["extra_seats"] == 0 for a in out["addons"]) and "arranged with the AccFino team" in out["extra_users"]       # user packs are never listed with a public price
+    db.add(S.Addon(id="addon-pack-org-9", name="Extra users", price_monthly=S.Decimal("20"), modules="[]", extra_seats=3, sort_order=100)); db.commit()
+    assert "addon-pack-org-9" not in [a["id"] for a in PP.public_pricing(Response(), db)["addons"]]
+    p = db.get(S.Plan, "essential"); p.price_monthly = S.Decimal("27.00"); db.commit()            # an admin edit shows on the website at once
     assert PP.public_pricing(Response(), db)["plans"][0]["price_monthly"] == 27.0
     p.is_active = False; db.commit()                                                              # hidden plans are not advertised
-    assert "essentials" not in [x["id"] for x in PP.public_pricing(Response(), db)["plans"]]
+    assert "essential" not in [x["id"] for x in PP.public_pricing(Response(), db)["plans"]]
 
 
 def test_landing_page_fallback_pricing_matches_the_shipped_catalogue():
@@ -275,31 +251,63 @@ def test_landing_page_fallback_pricing_matches_the_shipped_catalogue():
 
 
 # ------------------------------------------------------------------------------------------------ users scale with price (v3)
-def test_users_grow_with_the_price_and_extra_users_are_sold_per_head(env):
+def test_every_plan_is_one_user_and_yearly_is_eleven_months(env):
     db, org, ctx = env
     plans = {p.id: p for p in db.query(S.Plan).filter_by(is_active=True)}
-    assert [(p, int(plans[p].price_monthly), plans[p].seat_limit) for p in ("essentials", "business", "professional", "complete")] == \
-           [("essentials", 25, 1), ("business", 59, 3), ("professional", 99, 6), ("complete", 179, 15)]
-    assert all(plans[p].seat_limit is not None for p in plans)                                           # no plan is unlimited
-    per_user = {a.id: float(a.price_monthly) / a.extra_seats for a in db.query(S.Addon) if a.extra_seats}
-    assert per_user == {"addon-seat-1": 6.0, "addon-seats-5": 5.0}                                         # A$5-6 a head, near Zoho's A$4.40
-    assign(db, org, "essentials", addons=["addon-seat-1", "addon-seat-1"]); assert S.entitlements(db, org.id)["seats"] == 1 + 1     # the same add-on twice is one add-on: ids are a set
+    assert [(p, int(plans[p].price_monthly), int(plans[p].price_yearly), plans[p].seat_limit) for p in ("essential", "business", "professional", "ultra")] == \
+           [("essential", 25, 275, 1), ("business", 59, 649, 1), ("professional", 99, 1089, 1), ("ultra", 179, 1969, 1)]
+    assert all(plans[p].price_yearly == plans[p].price_monthly * 11 for p in plans)                        # one month free
+    assert not [a.id for a in db.query(S.Addon) if (a.extra_seats or 0) > 0]                               # no public seat packs: more users are arranged with the AccFino team
+    db.add(S.Addon(id="addon-pack-org-1", name="Extra users", price_monthly=S.Decimal("20"), modules="[]", extra_seats=3, sort_order=100)); db.commit()
+    assign(db, org, "essential", addons=["addon-pack-org-1", "addon-pack-org-1"]); assert S.entitlements(db, org.id)["seats"] == 1 + 3         # listed twice, counted once
 
 
-def test_v2_installation_moves_to_v3_seats_only_while_untouched(env):
-    from decimal import Decimal
+# ------------------------------------------------------------------------------------------------ Open banking: a function each plan switches on/off
+def test_open_banking_is_a_plan_function_included_by_default_and_switched_off_per_plan(env):
     db, org, ctx = env
-    ver = db.get(m.SystemSetting, S.CATALOGUE_VERSION_KEY); ver.value = "2"
-    v2 = {"essentials": (3, "Books for a small business: ledger, banking, sales, purchases and reports. 3 users."), "business": (10, "The whole Books & Accounting domain ... 10 users."),
-          "professional": (25, "Books + Payroll & Workforce + Taxation & Compliance + Planning & Intelligence. 25 users."), "complete": (None, "Every business domain, including everything. Unlimited users.")}
-    for pid, (seats, desc) in v2.items():
-        row = db.get(S.Plan, pid); row.seat_limit, row.description = seats, desc
-    db.get(S.Plan, "business").seat_limit = 12                                                           # an administrator had already changed this one
-    row = db.get(S.Addon, "addon-seats-5"); row.price_monthly = Decimal("15.00")
-    db.query(S.Addon).filter_by(id="addon-seat-1").delete(); db.commit()
+    assert "open-banking" in S.CATALOGUE_IDS and "open-banking" not in sum(S.DOMAIN_MODULES.values(), [])           # a function, not part of any business domain
+    for pid in ("essential", "business", "professional"):
+        assert "open-banking" in S.expand(json.loads(db.get(S.Plan, pid).modules))
+    assign(db, org, "essential"); enforce(db)
+    assert "open-banking" in S.entitlements(db, org.id)["modules"]
+    S.check(db, fake_ctx(ctx, org), ("open-banking",))
+    plan = db.get(S.Plan, "essential"); plan.modules = json.dumps(["domain:accounting"]); db.commit()               # the administrator unticks the function in Admin > Pricing > Edit plan
+    ent = S.entitlements(db, org.id)
+    assert "open-banking" in ent["locked"] and set(S.DOMAIN_MODULES["accounting"]) <= set(ent["modules"])             # only that function goes; all of Books & Accounting stays
+    with pytest.raises(HTTPException) as e:
+        S.check(db, fake_ctx(ctx, org), ("open-banking",))
+    assert e.value.status_code == 402 and "Open banking" in e.value.detail and "Essential" in e.value.detail
+    assert {f["id"] for f in ent["features"]} == {"open-banking"}
+
+
+def test_an_add_on_can_sell_the_function_to_a_plan_that_does_not_have_it(env):
+    db, org, ctx = env
+    db.get(S.Plan, "essential").modules = json.dumps(["domain:accounting"])
+    db.add(S.Addon(id="addon-open-banking", name="Open banking", price_monthly=S.Decimal("10"), modules=json.dumps(["open-banking"]), extra_seats=0, sort_order=50)); db.commit()
+    assign(db, org, "essential"); enforce(db)
+    assert "open-banking" in S.entitlements(db, org.id)["locked"]
+    assign(db, org, "essential", addons=["addon-open-banking"])
+    assert "open-banking" in S.entitlements(db, org.id)["modules"]
+
+
+def test_ultra_always_has_the_function_and_the_admin_api_accepts_it_in_a_plan(env):
+    db, org, ctx = env
+    assign(db, org, "ultra"); enforce(db)
+    assert "open-banking" in S.entitlements(db, org.id)["modules"] and S.entitlements(db, org.id)["locked"] == []
+    c, st = make_client(db, org, ctx); st["admin"] = True
+    ov = c.get("/admin/subscriptions").json()
+    assert [f["id"] for f in ov["features"]] == ["open-banking"] and "open-banking" in [x["id"] for x in ov["catalogue"]]
+    ok = c.put("/admin/subscriptions/plans/gold", json={"name": "Gold", "price_monthly": "49", "seat_limit": 1, "modules": ["domain:accounting", "open-banking"]})
+    assert ok.status_code == 200 and "open-banking" in ok.json()["modules"]
+
+
+def test_catalogue_version_5_databases_get_the_function_once_and_it_stays_off_when_removed(env):
+    db, org, ctx = env
+    db.get(S.Plan, "essential").modules = json.dumps(["domain:accounting"]); db.get(m.SystemSetting, S.CATALOGUE_VERSION_KEY).value = "5"; db.commit()           # a database from the previous release
     S.ensure_catalogue(db); db.commit()
-    seats = {p.id: p.seat_limit for p in db.query(S.Plan)}
-    assert seats["essentials"] == 1 and seats["professional"] == 6 and seats["complete"] == 15           # untouched v2 plans moved
-    assert seats["business"] == 12                                                                         # the edited plan is left alone
-    assert db.get(S.Addon, "addon-seats-5").price_monthly == Decimal("25.00") and db.get(S.Addon, "addon-seat-1").extra_seats == 1
-    assert db.get(m.SystemSetting, S.CATALOGUE_VERSION_KEY).value == "3"
+    assert "open-banking" in json.loads(db.get(S.Plan, "essential").modules) and "open-banking" in json.loads(db.get(S.Plan, "business").modules)
+    assert db.get(m.SystemSetting, S.CATALOGUE_VERSION_KEY).value == "6"
+    db.get(S.Plan, "essential").modules = json.dumps(["domain:accounting"]); db.commit()                              # switched off by the administrator ...
+    S.ensure_catalogue(db); db.commit()
+    assert "open-banking" not in json.loads(db.get(S.Plan, "essential").modules)                                      # ... and it does not come back
+

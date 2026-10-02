@@ -113,6 +113,11 @@ _FALLBACK_PLANS = {
 }
 
 # Load plans dynamically - refreshed on each request via property
+try:                                              # the hard-coded fallback is the shipped organisation plans in the old shape (never the retired Vault / Ultra list)
+    from accfino_core.subscription.align import legacy_plans_dict as _legacy_plans_dict
+    _FALLBACK_PLANS = _legacy_plans_dict()
+except Exception:
+    pass
 PLANS = _load_plans()
 
 
@@ -344,27 +349,28 @@ def _activate_plan(db, user_id: int, plan_id: str, billing_period: str,
     db.commit()
 
 
-@router.get("/my-plan/{user_id}")
-def my_plan(user_id: int):
-    """Return current plan details for a user."""
+def _legacy_my_plan(user_id: int):
     db = SessionLocal()
     try:
         lic = db.query(LicenceRecord).filter(LicenceRecord.user_id == user_id).first()
         if not lic:
-            return {"plan_id": "base", "licence_type": "base",
-                    "end_date": "", "modules": PLANS["base"]["modules"]}
-        # Map legacy "admin" plan_id - "premium" (matches pricing.json)
-        _plan_id = lic.plan_id or "base"
-        if _plan_id == "admin":
-            _plan_id = "premium"
-        return {
-            "plan_id":        _plan_id,
-            "licence_type":   lic.licence_type,
-            "billing_period": lic.billing_period,
-            "start_date":     lic.start_date,
-            "end_date":       lic.end_date,
-            "modules":        json.loads(lic.modules) if lic.modules else PLANS["base"]["modules"],
-        }
+            return {"plan_id": "essentials", "licence_type": "essentials", "end_date": "", "modules": ["dashboard", "reconciliation"]}
+        return {"plan_id": lic.plan_id or "essentials", "licence_type": lic.licence_type, "billing_period": lic.billing_period, "start_date": lic.start_date,
+                "end_date": lic.end_date, "modules": json.loads(lic.modules) if lic.modules else ["dashboard", "reconciliation"]}
+    finally:
+        db.close()
+
+
+@router.get("/my-plan/{user_id}")
+def my_plan(user_id: int):
+    """The plan this person's ORGANISATION is on (the organisation plans are the only price list). The AccFino administrator always shows the top plan."""
+    db = SessionLocal()
+    try:
+        from accfino_core.subscription.align import build_my_plan
+        out = build_my_plan(db, user_id)
+        return out if out is not None else _legacy_my_plan(user_id)
+    except Exception:
+        return _legacy_my_plan(user_id)
     finally:
         db.close()
 

@@ -357,6 +357,7 @@ def test_seat_is_rechecked_when_the_account_is_created(env):
 def test_direct_member_add_respects_licence_even_without_module_enforcement(env):
     db, c, state, events = env
     slug, org_id, _ = new_tenant(db, c, state)
+    S.set_settings(db, enforced=False); db.commit()                                          # plans are enforced by default now: switch it off to test the seat limit on its own
     assert S.get_settings(db)["enforced"] is False
     from accfino_core.security.context import OrgContext
     org = db.get(m.Organisation, org_id)
@@ -572,3 +573,73 @@ def test_auth_middleware_enforces_tenant_isolation_on_every_authenticated_route(
     denied = [e for e in events if e[0] == "tenant.access_denied"]
     assert {e[1]["detail"]["code"] for e in denied} == {"tenant_forbidden", "tenant_mismatch", "tenant_unknown"}
     assert all(e[1]["detail"]["tenant"] for e in denied)
+
+
+# ------------------------------------------------------------------------------------------------ admin check of organisation web addresses
+def _mock_site(handler):
+    import httpx
+    from accfino_core.tenancy import address_check as AC
+    AC._transport = httpx.MockTransport(handler)
+
+
+def test_address_check_reports_each_missing_step_in_plain_words(monkeypatch):
+    import httpx, socket
+    from accfino_core.tenancy import address_check as AC
+    monkeypatch.delenv("TENANT_BASE_DOMAIN", raising=False)
+    out = AC.check(); assert out["ok"] is False and [s["key"] for s in out["steps"]] == ["setting"] and "TENANT_BASE_DOMAIN" in out["steps"][0]["fix"]
+    monkeypatch.setenv("TENANT_BASE_DOMAIN", "accfino.com")
+    def no_dns(host, port): raise socket.gaierror("no such host")
+    monkeypatch.setattr(AC, "_resolver", no_dns)
+    out = AC.check(); assert [s["key"] for s in out["steps"]] == ["setting", "dns"] and out["steps"][1]["ok"] is False and "*.accfino.com" in out["steps"][1]["fix"]
+    monkeypatch.setattr(AC, "_resolver", lambda host, port: [("x",)])                                    # DNS is fine now
+    def bad_cert(request): raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed")
+    _mock_site(bad_cert); out = AC.check()
+    assert [s["key"] for s in out["steps"]][-1] == "https" and out["steps"][-1]["ok"] is False and "certificate" in out["steps"][-1]["detail"] and "wildcard certificate" in out["steps"][-1]["fix"]
+    _mock_site(lambda request: httpx.Response(200, text="<html>some other site</html>"))                   # HTTPS works but it is not AccFino reading the name
+    out = AC.check(); assert out["steps"][-1]["key"] == "routing" and out["steps"][-1]["ok"] is False and out["ok"] is False
+    AC._transport = None
+
+
+def test_address_check_passes_when_everything_is_in_place_and_uses_a_random_name(monkeypatch):
+    import httpx
+    from accfino_core.tenancy import address_check as AC
+    monkeypatch.setenv("TENANT_BASE_DOMAIN", "accfino.com"); monkeypatch.setenv("TENANT_SCHEME", "https")
+    seen = []
+    monkeypatch.setattr(AC, "_resolver", lambda host, port: seen.append(host) or [("x",)])
+    def accfino(request):                                                                                  # what the real /tenant/current answers for an unknown organisation name
+        host = request.headers["host"]; slug = host.split(".")[0]
+        return httpx.Response(200, json={"tenant": slug, "found": False, "name": None, "tenant_urls_enabled": True})
+    _mock_site(accfino)
+    out = AC.check(); AC._transport = None
+    assert out["ok"] is True and [s["key"] for s in out["steps"]] == ["setting", "dns", "https", "routing"] and out["example"] == "https://your-organisation.accfino.com"
+    assert seen[0].startswith("check-") and seen[0].endswith(".accfino.com") and "fix" not in str(out["steps"])
+
+
+def test_a_real_request_to_a_tenant_address_is_read_correctly_and_www_is_never_a_tenant(monkeypatch):
+    from accfino_core.tenancy import service as T
+    monkeypatch.setenv("TENANT_BASE_DOMAIN", "accfino.com")
+    assert T.tenant_from_host("kutumb-accounting.accfino.com") == "kutumb-accounting"
+    assert T.tenant_from_host("kutumb-accounting.accfino.com:443") == "kutumb-accounting"
+    for host in ("www.accfino.com", "accfino.com", "app.accfino.com", "api.accfino.com", "a.b.accfino.com", "other.example.com", "localhost:8001"):
+        assert T.tenant_from_host(host) is None, host                                                      # the marketing site and the app itself keep working with a wildcard in place
+    assert T.tenant_url("kutumb-accounting") == "https://kutumb-accounting.accfino.com"
+    assert T.request_tenant({"x-forwarded-host": "acme.accfino.com", "host": "internal:8001"}) == "acme"       # behind a proxy the forwarded host wins
+
+
+def test_http_address_check_is_admin_only(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from accfino_core.api import org_directory_api as OD
+    from accfino_core.tenancy import address_check as AC
+    monkeypatch.delenv("TENANT_BASE_DOMAIN", raising=False)
+    st = {"admin": False}
+    app = FastAPI(); app.include_router(OD.router, prefix="/admin/org-directory")
+    @app.middleware("http")
+    async def _a(request, call_next):
+        request.state.auth = {"user_id": 1, "username": "t", "is_admin": st["admin"]}
+        return await call_next(request)
+    c = TestClient(app)
+    assert c.get("/admin/org-directory/address-check").status_code == 403
+    st["admin"] = True
+    out = c.get("/admin/org-directory/address-check").json()
+    assert out["ok"] is False and out["steps"][0]["key"] == "setting"
