@@ -18,7 +18,7 @@ const POPUP_FEATURES = () => {                                       // a centre
 const when = s => (s ? new Date(s).toLocaleString('en-AU') : '—')
 
 // "Connect my bank": the Organisation Admin never visits OpenFeed on their own - AccFino sends them there and brings them back.
-export default function BankFeedCard({ isAdmin = false }) {
+export default function BankFeedCard({ isAdmin = false, onConnected }) {
   const [st, setSt] = useState(null)
   const [busy, setBusy] = useState('')
   const [popupOpen, setPopupOpen] = useState(false)                  // a ref alone would not re-render the card
@@ -34,7 +34,9 @@ export default function BankFeedCard({ isAdmin = false }) {
       if (res === 'connected') toast.success('Your bank is connected')
       else if (res === 'declined') toast('Nothing was shared, so no bank was connected.')
       else toast.error(REASONS[q.get('reason')] || 'The bank connection could not be completed. Please try again.', { duration: 8000 })
-      window.history.replaceState({}, '', window.location.pathname)
+      q.delete('openfeed'); q.delete('reason')                           // keep the other parts of the address (e.g. returnTo)
+      window.history.replaceState({}, '', window.location.pathname + (q.toString() ? `?${q}` : ''))
+      if (res === 'connected') onConnected?.()
     }
   }, [load])
 
@@ -43,11 +45,11 @@ export default function BankFeedCard({ isAdmin = false }) {
     clearInterval(timerRef.current); timerRef.current = null
     try { if (popupRef.current && !popupRef.current.closed) popupRef.current.close() } catch {}
     popupRef.current = null; setPopupOpen(false); setBusy('')
-    if (result === 'connected') toast.success('Your bank is connected')
+    if (result === 'connected') { toast.success('Your bank is connected'); onConnected?.() }
     else if (result === 'declined') toast('Nothing was shared, so no bank was connected.')
     else toast.error(REASONS[reason] || 'The bank connection could not be completed. Please try again.', { duration: 8000 })
     load()
-  }, [load])
+  }, [load, onConnected])
   useEffect(() => {
     const onMessage = ev => { if (ev?.data?.type === 'accfino-openfeed') finish(ev.data.result, ev.data.reason) }
     window.addEventListener('message', onMessage)
@@ -63,7 +65,7 @@ export default function BankFeedCard({ isAdmin = false }) {
     try { if (popup) popup.document.write('<p style="font-family:system-ui,sans-serif;padding:32px;text-align:center">Opening OpenFeed…</p>') } catch {}
     setBusy('connect')
     try {
-      const { data } = await api.obFeedConnect(window.location.pathname, popup ? window.location.origin : undefined)
+      const { data } = await api.obFeedConnect(window.location.pathname + window.location.search, popup ? window.location.origin : undefined)
       if (!popup) { window.location.assign(data.url); return }                               // blocked: ordinary redirect, comes back to this page
       popupRef.current = popup; setPopupOpen(true)
       popup.location.href = data.url

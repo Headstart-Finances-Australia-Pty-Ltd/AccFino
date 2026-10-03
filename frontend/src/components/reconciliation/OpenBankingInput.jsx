@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { obReconcileAccounts, obPull } from '../../lib/api.js'
 import { RefreshCw, Settings as SettingsIcon } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { withReturn, withParam } from '../../lib/returnTo.js'
 import toast from 'react-hot-toast'
 import useOrgRole from '../../hooks/useOrgRole.jsx'
 
@@ -21,6 +22,9 @@ const PRESETS = {
 // Only bank accounts that were set up in Settings > Open Banking (Basiq / OpenFeed) are offered here.
 export default function OpenBankingInput({ onPulled }) {
   const { isOrgAdmin } = useOrgRole()
+  const here = useLocation()
+  // Settings > Open Banking sends the person back here (on this same input) as soon as an account is connected
+  const settingsTo = withReturn('/settings/open-banking', withParam(here.pathname + here.search, 'input', 'openbanking'))
   const [accounts, setAccounts] = useState(null)   // null = loading
   const [picked,   setPicked]   = useState([])
   const [preset,   setPreset]   = useState('last30')
@@ -38,7 +42,9 @@ export default function OpenBankingInput({ onPulled }) {
     setPreset(k)
     if (PRESETS[k].range) { const [f,t] = PRESETS[k].range(); setFrom(iso(f)); setTo(iso(t)) }
   }
-  const pullable = (accounts || []).filter(a => a.provider === 'basiq')
+  // Basiq and OpenFeed accounts can both be pulled (the server reads each from its own provider)
+  const PROVIDER_LABEL = { basiq: 'Basiq', openfeed: 'OpenFeed' }
+  const pullable = accounts || []
   const allPicked = pullable.length > 0 && pullable.every(a => picked.includes(a.key))
   const toggleAll = () => setPicked(allPicked ? [] : pullable.map(a => a.key))
   const toggle = key => setPicked(p => p.includes(key) ? p.filter(k => k!==key) : [...p, key])
@@ -69,7 +75,7 @@ export default function OpenBankingInput({ onPulled }) {
       <p style={{fontSize:'.85rem',color:'var(--text-2)',lineHeight:1.6,margin:'0 0 12px'}}>
         Only bank accounts saved in <strong>Settings → Open Banking</strong> (Basiq or OpenFeed) can be pulled here.{!isOrgAdmin && ' Ask your Organisation Admin to set this up.'}
       </p>
-      {isOrgAdmin && <Link className="btn btn-outline btn-sm" to="/settings/open-banking"><SettingsIcon size={14}/> Open settings</Link>}
+      {isOrgAdmin && <Link className="btn btn-outline btn-sm" to={settingsTo} data-testid="open-bank-settings"><SettingsIcon size={14}/> Open settings</Link>}
     </div>
   )
 
@@ -84,17 +90,17 @@ export default function OpenBankingInput({ onPulled }) {
         </label>
         <div style={{display:'flex',flexDirection:'column',gap:6}}>
           {accounts.map(a => {
-            const off = a.provider !== 'basiq'
+            const off = false
             const on  = picked.includes(a.key)
             return (
-              <label key={a.key} title={off ? 'OpenFeed transaction pull is not available yet' : undefined}
+              <label key={a.key} title={undefined}
                 style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',fontSize:'.83rem',
                   border:`1.5px solid ${on ? 'var(--brand)' : 'var(--border)'}`,
                   background: on ? 'var(--brand-xlight)' : 'transparent',
                   borderRadius:'var(--r-md)', cursor: off ? 'not-allowed' : 'pointer', opacity: off ? .5 : 1}}>
                 <input type="checkbox" checked={on} disabled={off} onChange={() => toggle(a.key)}/>
                 <span style={{flex:1,minWidth:0}}>{label(a)}</span>
-                <span className="badge badge-neutral">{off ? 'OpenFeed · soon' : 'Basiq'}</span>
+                <span className="badge badge-neutral">{PROVIDER_LABEL[a.provider] || a.provider}</span>
               </label>
             )
           })}
@@ -117,6 +123,7 @@ export default function OpenBankingInput({ onPulled }) {
       <button className="btn btn-primary btn-sm" onClick={pull} disabled={busy || !picked.length || badPeriod}>
         {busy ? <><span className="spinner spinner-sm"/> Pulling…</> : <><RefreshCw size={14}/> Pull {picked.length > 1 ? `${picked.length} accounts` : 'account'} &amp; merge into CSV data</>}
       </button>
+      {isOrgAdmin && <Link className="text-xs" to={settingsTo} data-testid="change-bank-accounts" style={{alignSelf:'flex-start'}}>Add or change bank accounts</Link>}
       <p style={{fontSize:'.78rem',color:'var(--text-3)',lineHeight:1.5,margin:0}}>
         Pulled transactions are merged into the uploaded CSV data of the same account (matched by account number).
         Rows that already exist in the CSV are not counted twice.
