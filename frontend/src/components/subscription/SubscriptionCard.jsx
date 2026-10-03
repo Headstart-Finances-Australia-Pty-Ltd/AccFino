@@ -8,10 +8,11 @@ const STATUS_LABEL = { trial: 'Trial', active: 'Active', past_due: 'Payment over
 
 /** Settings > Business Setup > Organisation > Subscription: this organisation's plan, seats, included / locked modules, and a way to ask for more. */
 // "All business domains" / "Books and Accounting, Payroll & Workforce + 2 modules" / "6 modules"
-export function planSummary(p, domains) {
+export function planSummary(p, domains, features = []) {
   if (p.modules.includes('*')) return 'all business domains'
   const names = (domains || []).filter(d => p.modules.includes(`domain:${d.id}`)).map(d => d.name)
-  const single = p.modules.filter(x => !x.startsWith('domain:')).length
+  const fnIds = new Set((features || []).map(f => f.id))
+  const single = p.modules.filter(x => !x.startsWith('domain:') && !fnIds.has(x)).length
   if (!names.length) return `${single} modules`
   return `${names.join(', ')}${single ? ` + ${single} module${single === 1 ? '' : 's'}` : ''}`
 }
@@ -33,7 +34,8 @@ export default function SubscriptionCard() {
   const full = sub.seats != null && sub.seats_used >= sub.seats
   const ownedAddons = new Set(sub.addons.map(a => a.id))
   // modules grouped by business domain (an older server without domains shows one flat list)
-  const groups = sub.domains?.length ? sub.domains : [{ id: null, name: '', modules: sub.catalogue.map(c => c.id) }]
+  const groups = [...(sub.domains?.length ? sub.domains : [{ id: null, name: '', modules: sub.catalogue.filter(c => !(sub.features || []).some(f => f.id === c.id)).map(c => c.id) }]),
+    ...((sub.features || []).length ? [{ id: 'functions', name: 'Functions', modules: sub.features.map(f => f.id) }] : [])]
 
   return (
     <div className="card" style={{ padding: 16, marginBottom: 16 }} data-testid="subscription-card">
@@ -82,12 +84,22 @@ export default function SubscriptionCard() {
           <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, minWidth: 190, flex: '1 1 190px', background: p.id === sub.plan_id ? 'var(--surface-2, #f3f6fa)' : undefined }}>
             <b>{p.name}</b> {p.id === sub.plan_id && <span className="badge badge-success">Current</span>}
             <div className="text-sm">{fmtAUD(p.price_monthly)}/month · {fmtAUD(p.price_yearly)}/year</div>
-            <div className="text-xs text-muted" style={{ margin: '4px 0' }}>{p.seat_limit == null ? 'Unlimited users' : `${p.seat_limit} ${p.seat_limit === 1 ? 'user' : 'users'}`} · {planSummary(p, sub.domains)}</div>
+            <div className="text-xs text-muted" style={{ margin: '4px 0' }}>{p.seat_limit == null ? 'Unlimited users' : `${p.seat_limit} ${p.seat_limit === 1 ? 'user' : 'users'}`} · {planSummary(p, sub.domains, sub.features)}</div>
             <div className="text-xs text-muted">{p.description}</div>
             {sub.can_manage && p.id !== sub.plan_id && <button className="btn btn-outline btn-xs mt-4" disabled={busy} onClick={() => request({ plan_id: p.id }, `change to ${p.name}`)}>Request {p.name}</button>}
           </div>))}
       </div>
       {!sub.can_manage && <div className="text-xs text-muted mt-4">Only an owner can request plan changes.</div>}
+      <div data-testid="user-pack-note" style={{ marginTop: 14, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2)' }}>
+        <div className="text-sm fw-600">Need more users?</div>
+        <div className="text-xs text-muted" style={{ margin: '2px 0 8px' }}>Every plan is for 1 user. More users come in a user pack arranged with the AccFino team to suit your organisation.</div>
+        {sub.can_manage
+          ? <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button className="btn btn-outline btn-xs" disabled={busy} onClick={() => request({}, 'a user pack for more users')} data-testid="ask-user-pack">Ask about a user pack</button>
+              <a className="text-xs" href="mailto:contact@accfino.com?subject=User pack enquiry">or email contact@accfino.com</a>
+            </div>
+          : <div className="text-xs text-muted">Ask your Organisation Admin to arrange it with AccFino.</div>}
+      </div>
       <BillingCard />
     </div>
   )

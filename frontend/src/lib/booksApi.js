@@ -189,6 +189,9 @@ export const adminSetForceDelete   = enabled         => http.put('/admin/force-d
 export const adminOrgDirectory     = ()              => http.get('/admin/org-directory', { params: { _t: Date.now() }, headers: { 'Cache-Control': 'no-cache' } })
 export const adminPruneEmptyOrgs   = ()              => http.post('/admin/org-directory/prune-empty')
 export const adminPruneOrphanUsers = ()              => http.post('/admin/org-directory/prune-orphan-users')
+export const adminUserPlans      = ()              => http.get('/admin/org-directory/user-plans', { params: { _t: Date.now() } })
+export const adminSetOrgPlan     = (orgId, plan_id) => http.put(`/admin/org-directory/org/${orgId}/plan`, { plan_id })
+export const adminAddressCheck   = ()              => http.get('/admin/org-directory/address-check', { params: { _t: Date.now() } })
 export const adminBulkDeleteUsers  = (ids, force)    => http.post('/admin/force-delete/users', { ids, force: !!force })
 export const adminBulkDeleteOrgs   = (ids, force)    => http.post('/admin/force-delete/organisations', { ids, force: !!force })
 

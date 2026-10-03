@@ -22,7 +22,7 @@ function OpenfeedPanel() {
 }
 
 export default function OpenBankingPage() {
-  const { isModuleVisible } = useModuleVisibility()
+  const { isModuleVisible, isLocked, subscription } = useModuleVisibility()
   const { user } = useAuth()
   const isAdmin = !!(user?.is_admin || (user?.roles || []).includes('admin'))
   const PROVIDERS = [
@@ -96,6 +96,12 @@ export default function OpenBankingPage() {
     } catch (e) { toast.error(e.response?.data?.detail||'Failed to fetch transactions') }
     finally { setBusy(false) }
   }
+
+  if (isLocked('open-banking')) return (
+    <div className="card" data-testid="open-banking-not-in-plan" style={{ maxWidth: 520, margin: '40px auto', textAlign: 'center' }}>
+      <h3 style={{ marginBottom: 8 }}>Open banking is not part of your plan</h3>
+      <p style={{ color: 'var(--text-2)', marginBottom: 0 }}>{subscription?.plan_name ? <>Your <b>{subscription.plan_name}</b> plan doesn't include live bank feeds. </> : null}You can still upload bank statements for reconciliation. To add bank feeds, upgrade the plan under Settings &gt; Subscription.</p>
+    </div>)
 
   return (
     <div className="fade-in">

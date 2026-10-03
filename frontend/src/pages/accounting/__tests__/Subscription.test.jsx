@@ -3,9 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 
 const CATALOGUE = [{ id: 'sales', name: 'Sales' }, { id: 'expenses', name: 'Expense claims' }, { id: 'inventory-trading', name: 'Inventory' }]
-const subscription = (over = {}) => ({ enforced: true, grandfathered: false, plan_id: 'starter', plan_name: 'Starter', status: 'active', read_only: false, modules: ['sales'], locked: ['expenses', 'inventory-trading'],
+const subscription = (over = {}) => ({ enforced: true, grandfathered: false, plan_id: 'essential', plan_name: 'Essential', status: 'active', read_only: false, modules: ['sales'], locked: ['expenses', 'inventory-trading'],
   seats: 3, seats_used: 3, addons: [], period_end: null, trial_ends: null, catalogue: CATALOGUE, can_manage: true,
-  plans: [{ id: 'starter', name: 'Starter', description: 'Core', price_monthly: '29.00', price_yearly: '290.00', seat_limit: 3, modules: ['sales'] }, { id: 'premium', name: 'Premium', description: 'All', price_monthly: '149.00', price_yearly: '1490.00', seat_limit: null, modules: ['*'] }],
+  plans: [{ id: 'essential', name: 'Essential', description: 'Core', price_monthly: '29.00', price_yearly: '290.00', seat_limit: 3, modules: ['sales'] }, { id: 'premium', name: 'Premium', description: 'All', price_monthly: '149.00', price_yearly: '1490.00', seat_limit: null, modules: ['*'] }],
   addon_catalogue: [{ id: 'addon-expenses', name: 'Expense claims', price_monthly: '10.00', modules: ['expenses'], extra_seats: 0 }], ...over })
 
 vi.mock('../../../lib/api.js', async importOriginal => ({ ...(await importOriginal()), getModuleVisibility: vi.fn(() => Promise.resolve({ data: { domains: {}, modules: {} } })) }))
@@ -52,7 +52,7 @@ describe('SubscriptionCard (owner view)', () => {
   it('shows plan, seats, locked modules, and lets an owner request an add-on', async () => {
     render(<SubscriptionCard />)
     await waitFor(() => expect(screen.getByTestId('subscription-card')).toBeInTheDocument())
-    expect(screen.getByTestId('subscription-card').querySelector('b').textContent).toBe('Starter')
+    expect(screen.getByTestId('subscription-card').querySelector('b').textContent).toBe('Essential')
     expect(screen.getByText('3 of 3')).toBeInTheDocument()
     expect(screen.getByTestId('sub-module-expenses')).toHaveTextContent('Not in your plan')
     fireEvent.click(screen.getByRole('button', { name: /Request Expense claims/ }))
@@ -77,10 +77,10 @@ describe('SubscriptionCard (owner view)', () => {
 })
 
 describe('SubscriptionAdminPanel', () => {
-  const overview = () => ({ settings: { enforced: false, default_plan: 'starter' }, catalogue: CATALOGUE,
-    plans: [{ id: 'starter', name: 'Starter', description: '', price_monthly: '29.00', price_yearly: '290.00', seat_limit: 3, modules: ['sales'], is_active: true, sort_order: 1 }],
+  const overview = () => ({ settings: { enforced: false, default_plan: 'essential' }, catalogue: CATALOGUE,
+    plans: [{ id: 'essential', name: 'Essential', description: '', price_monthly: '29.00', price_yearly: '290.00', seat_limit: 3, modules: ['sales'], is_active: true, sort_order: 1 }],
     addons: [{ id: 'addon-expenses', name: 'Expense claims', description: '', price_monthly: '10.00', modules: ['expenses'], extra_seats: 0, is_active: true, sort_order: 1 }],
-    organisations: [{ org_id: 7, name: 'Acme Org', members: 2, plan_id: 'starter', addons: [], status: 'active', effective_status: 'active', billing_period: 'monthly', period_end: null, trial_ends: null, notes: null }] })
+    organisations: [{ org_id: 7, name: 'Acme Org', members: 2, plan_id: 'essential', addons: [], status: 'active', effective_status: 'active', billing_period: 'monthly', period_end: null, trial_ends: null, notes: null }] })
   beforeEach(() => { api.adminSubOverview.mockImplementation(() => Promise.resolve({ data: overview() })) })
 
   it('the enforcement checkbox saves immediately', async () => {
@@ -99,7 +99,7 @@ describe('SubscriptionAdminPanel', () => {
     fireEvent.click(row.querySelectorAll('input[type=checkbox]')[0])                            // tick "Expense claims"
     expect(save).not.toBeDisabled()
     fireEvent.click(save)
-    await waitFor(() => expect(api.adminAssignOrgPlan).toHaveBeenCalledWith(7, expect.objectContaining({ plan_id: 'starter', addons: ['addon-expenses'], status: 'active' })))
+    await waitFor(() => expect(api.adminAssignOrgPlan).toHaveBeenCalledWith(7, expect.objectContaining({ plan_id: 'essential', addons: ['addon-expenses'], status: 'active' })))
   })
 
   it('creates a new plan with chosen modules', async () => {

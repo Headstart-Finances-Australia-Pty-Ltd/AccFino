@@ -9,26 +9,13 @@ import { processFiles, processFilesWithSession, getSession, getBanks } from '../
 import { ReconciliationContext } from '../components/layout/Layout.jsx'
 import { Landmark } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useModuleVisibility } from '../hooks/useModuleVisibility.jsx'
 
 export default function ReconciliationPage() {
   const { user }   = useAuth()
-  const [hasOpenBanking, setHasOpenBanking] = React.useState(false)
+  const { isLocked } = useModuleVisibility()
+  const hasOpenBanking = !isLocked('open-banking')                    // a plan function: Admin > Pricing > Edit plan > Functions
 
-  React.useEffect(() => {
-    if (!user?.id) return
-    const isAdmin = Array.isArray(user.roles) && user.roles.includes('admin')
-    if (isAdmin) { setHasOpenBanking(true); return }
-    // Open Banking only if user specifically paid for reconciliation plan
-    // Base plan includes CSV reconciliation but NOT Open Banking
-    getMyPlan(user.id)
-      .then(r => {
-        const planId = r.data?.plan_id || 'base'
-        // Open Banking unlocked on ANY paid plan (not base)
-        const hasOB = planId !== 'base' || isAdmin
-        setHasOpenBanking(hasOB)
-      })
-      .catch(() => setHasOpenBanking(false))
-  }, [user?.id])
   const location   = useLocation()
   const navigate   = useNavigate()
 

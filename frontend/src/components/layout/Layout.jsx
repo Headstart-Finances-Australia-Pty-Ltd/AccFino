@@ -88,17 +88,9 @@ export default function Layout() {
 
   const isAdmin = (Array.isArray(user?.roles) && user.roles.includes('admin')) || user?.is_admin === true
 
-  const canAccess = (moduleKey) => {
-    if (moduleKey === 'setup') return true        // Control Panel always accessible
-    if (moduleKey === 'accounting') return true   // Accounting always accessible — Reconciliation is free for all
-    if (moduleKey === 'lending')     return true   // Smart Lending always accessible
-    if (moduleKey === 'ledger')      return true   // Phase 0: General Ledger available to every organisation
-    if (moduleKey === 'dashboard') return true    // Overview always accessible
-    if (isAdmin) return true
-    if (allowedModules === null) return false     // still loading
-    if (allowedModules === 'all') return true
-    return allowedModules.includes(moduleKey)
-  }
+  // The organisation's PLAN decides what a person can reach: modules outside it are already removed from the menu, tabs and Home (useModuleVisibility) and refused by the server.
+  // The old per-user licence list is no longer a second gate.
+  const canAccess = () => true
 
   const initials = (user?.name || user?.email || 'U').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
   const userName = user?.name || user?.email || ''

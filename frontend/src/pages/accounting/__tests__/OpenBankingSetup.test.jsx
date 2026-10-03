@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 let authUser = {}
 vi.mock('../../../hooks/useAuth.jsx', () => ({ useAuth: () => ({ user: authUser }) }))
 let hidden = new Set()
-vi.mock('../../../hooks/useModuleVisibility.jsx', () => ({ useModuleVisibility: () => ({ isModuleVisible: id => !hidden.has(id) }) }))
+vi.mock('../../../hooks/useModuleVisibility.jsx', () => ({ useModuleVisibility: () => ({ isModuleVisible: id => !hidden.has(id), isLocked: () => false, subscription: null }) }))
 vi.mock('react-hot-toast', () => ({ default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }))
 vi.mock('../../../lib/booksApi.js', async () => {
   const actual = await vi.importActual('../../../lib/booksApi.js')

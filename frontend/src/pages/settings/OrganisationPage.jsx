@@ -171,8 +171,11 @@ export default function OrganisationPage() {
             : <b>{org.slug || 'n/a'}</b>}</div>
         </div>
         {!org.tenant_url && org.is_org_admin && (
-          <div className="alert alert-warning text-xs" style={{ marginTop: 8 }}>Organisation web addresses such as <b>https://{org.slug || 'name'}.&lt;your domain&gt;</b> are not switched on for this installation. The platform owner switches them on by
-            setting <code>TENANT_BASE_DOMAIN</code> (for example <code>syd.accfino.com</code>) on the server and adding a wildcard DNS record <code>*.syd.accfino.com</code> and certificate. See docs/ORG_ADMIN.md.</div>)}
+          <div className="alert alert-info text-xs" style={{ marginTop: 8 }} data-testid="org-url-off">
+            <b>Your own web address is not switched on yet.</b> It would be <b>https://{org.slug || 'your-name'}.{'<AccFino domain>'}</b>. Until then, everyone signs in at the usual AccFino address ({window.location.origin}) - nothing is lost.
+            {' '}It is a platform-wide setting that the AccFino team switches on once for every organisation
+            {org.platform_admin ? <> - <a href="/admin/api-keys?tab=addresses" data-testid="org-url-admin-link">check what is missing in Admin Console &gt; API Keys &gt; Web Addresses</a>.</> : <> - ask AccFino support to switch it on.</>}
+          </div>)}
         <p className="text-xs text-muted" style={{ marginBottom: 0 }}>The Organisation Admin is the organisation's account owner. Account, licence, billing and security notices are sent to this email address. To change it, the Organisation Admin edits their own details under My Account.</p>
       </div>
       <SubscriptionCard />

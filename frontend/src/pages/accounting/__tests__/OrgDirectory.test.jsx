@@ -19,7 +19,7 @@ const DIR = {
   unassigned_users: [U(9, 'Loose Lou', 'lou@example.com', null, { role_label: '' })],
   organisations: [
     { org_id: 10, name: 'Alpha Pty Ltd', is_active: true, admin: { user_id: 2, name: 'Ann', email: 'ann@alpha.example', phone: '+61412345678', phone_display: '0412 345 678' },
-      licence: { plan_id: 'starter', plan_name: 'Starter', status: 'active', seats: 3, active_users: 2, pending_codes: 0 }, user_count: 2,
+      licence: { plan_id: 'essential', plan_name: 'Essential', status: 'active', seats: 3, active_users: 2, pending_codes: 0 }, user_count: 2,
       users: [U(2, 'Ann', 'ann@alpha.example', 'owner'), U(3, 'Bob', 'bob@alpha.example', 'accountant')] },
     { org_id: 11, name: 'Beta Pty Ltd', is_active: true, admin: { user_id: 4, name: 'Cy', email: 'cy@beta.example', phone: '', phone_display: '' },
       licence: { plan_id: null, plan_name: 'All modules (no plan assigned)', status: 'trial', seats: null, active_users: 1, pending_codes: 0 }, user_count: 1, users: [U(4, 'Cy', 'cy@beta.example', 'owner')] },
@@ -33,7 +33,7 @@ describe('Organisations & Users directory', () => {
     render(<OrgDirectoryPanel />)
     const row = await screen.findByTestId('org-row-10')
     expect(row).toHaveTextContent('Alpha Pty Ltd'); expect(row).toHaveTextContent('ann@alpha.example'); expect(row).toHaveTextContent('0412 345 678')
-    expect(row).toHaveTextContent('Starter'); expect(row).toHaveTextContent('active'); expect(row).toHaveTextContent('2 / 3')
+    expect(row).toHaveTextContent('Essential'); expect(row).toHaveTextContent('active'); expect(row).toHaveTextContent('2 / 3')
     expect(screen.getByTestId('org-row-11')).toHaveTextContent('1 / unlimited')
   })
 

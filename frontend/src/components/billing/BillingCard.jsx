@@ -104,7 +104,7 @@ export default function BillingCard() {
         <div data-testid="billing-subscribe" style={{ marginBottom: 10 }}>
           <div style={{ display: 'flex', gap: 14, marginBottom: 8, flexWrap: 'wrap' }}>
             {['monthly', 'yearly'].map(p => (
-              <label key={p} className="text-sm" style={{ cursor: 'pointer' }}><input type="radio" name="bill-period" checked={period === p} onChange={() => setPeriod(p)} /> {p === 'monthly' ? 'Monthly' : 'Yearly (2 months free)'} <b>{price(p)}</b></label>
+              <label key={p} className="text-sm" style={{ cursor: 'pointer' }}><input type="radio" name="bill-period" checked={period === p} onChange={() => setPeriod(p)} /> {p === 'monthly' ? 'Monthly' : 'Yearly (1 month free)'} <b>{price(p)}</b></label>
             ))}
           </div>
           <button className="btn btn-primary btn-sm" onClick={subscribe} disabled={!!busy} data-testid="billing-subscribe-btn">{busy === 'sub' ? 'Charging…' : `Pay ${price(period)} now and renew automatically`}</button>

@@ -47,7 +47,9 @@ export function ModuleVisibilityProvider({ children }) {
   // until an admin explicitly hides it, and nothing flashes hidden before load.
   const isDomainVisible = id => raw.domains?.[id] !== false
   // A module shows when the platform allows it AND the organisation's subscription includes it
-  const isLocked = id => locked.includes(id)
+  // Settings > Open Banking providers (Basiq, OpenFeed) are one plan function: "Open banking" (Admin > Pricing > Edit plan > Functions)
+  const PLAN_FUNCTION_OF = { 'basiq-open-banking': 'open-banking', 'openfeed-open-banking': 'open-banking' }
+  const isLocked = id => locked.includes(id) || (PLAN_FUNCTION_OF[id] ? locked.includes(PLAN_FUNCTION_OF[id]) : false)
   const isModuleVisible = id => raw.modules?.[id] !== false && !isLocked(id)
 
   return (

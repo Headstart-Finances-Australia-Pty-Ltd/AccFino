@@ -12,7 +12,7 @@ import * as api from '../../../lib/booksApi.js'
 import BillingCard from '../../../components/billing/BillingCard.jsx'
 import SquarePlatformPanel from '../../../components/payments/SquarePlatformPanel.jsx'
 
-const VIEW = (over = {}) => ({ data: { available: true, can_manage: true, has_plan: true, plan_name: 'Essentials', billing_period: 'monthly', status: 'active', prices: { monthly: 25, yearly: 250 }, amount_next: 25,
+const VIEW = (over = {}) => ({ data: { available: true, can_manage: true, has_plan: true, plan_name: 'Essential', billing_period: 'monthly', status: 'active', prices: { monthly: 25, yearly: 250 }, amount_next: 25,
   square: { applicationId: 'sq0idp-X', locationId: 'L1', environment: 'sandbox' }, card: null, auto_renew: false, failure_count: 0, charges: [], ...over } })
 let tokenize
 beforeEach(() => {
@@ -76,7 +76,7 @@ describe('Admin Console: Square platform set-up', () => {
   it('saves the credentials write-only, tests them in plain words and shows the billing overview', async () => {
     api.adminSquareStatus.mockResolvedValueOnce(ST()).mockResolvedValue(ST({ configured: true, application_id: 'A', location_id: 'L', has_token: true }))
     api.adminSaveSquare.mockResolvedValue({ data: {} }); api.adminTestSquare.mockResolvedValue({ data: { ok: true, message: 'Connected to Square location "AccFino HQ" (AU, AUD, sandbox).' } })
-    api.adminBillingOverview.mockResolvedValue({ data: { organisations: [{ org_id: 1, org_name: 'Alpha', plan_id: 'essentials', billing_period: 'monthly', card: 'Visa ···· 1111', auto_renew: true, next_charge_on: '2026-11-02', failure_count: 0, status: 'active' }], recent: [] } })
+    api.adminBillingOverview.mockResolvedValue({ data: { organisations: [{ org_id: 1, org_name: 'Alpha', plan_id: 'essential', billing_period: 'monthly', card: 'Visa ···· 1111', auto_renew: true, next_charge_on: '2026-11-02', failure_count: 0, status: 'active' }], recent: [] } })
     render(<SquarePlatformPanel />)
     const token = await screen.findByTestId('square-token-input'); expect(token).toHaveAttribute('type', 'password')
     fireEvent.change(screen.getByLabelText('Square application id'), { target: { value: 'A' } }); fireEvent.change(screen.getByLabelText('Square location id'), { target: { value: 'L' } })

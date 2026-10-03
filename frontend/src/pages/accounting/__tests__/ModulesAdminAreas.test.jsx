@@ -7,7 +7,7 @@ vi.mock('../../../lib/api.js', () => ({ getModuleVisibility: vi.fn(), saveModule
 vi.mock('../../../lib/booksApi.js', async () => {
   const actual = await vi.importActual('../../../lib/booksApi.js')
   return { ...actual, adminGetBulkImport: vi.fn(() => Promise.resolve({ data: { enabled: true } })), adminSetBulkImport: vi.fn(), adminGetForceDelete: vi.fn(() => Promise.resolve({ data: { enabled: false } })),
-    adminSetForceDelete: vi.fn(), adminSubOverview: vi.fn(() => Promise.resolve({ data: { settings: { enforced: false, default_plan: 'essentials' }, plans: [], addons: [], catalogue: [], domains: [], organisations: [] } })) }
+    adminSetForceDelete: vi.fn(), adminSubOverview: vi.fn(() => Promise.resolve({ data: { settings: { enforced: false, default_plan: 'essential' }, plans: [], addons: [], catalogue: [], domains: [], organisations: [] } })) }
 })
 import * as api from '../../../lib/api.js'
 import ModulesAdminPage from '../../ModulesAdminPage.jsx'

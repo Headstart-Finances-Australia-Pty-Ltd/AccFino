@@ -29,7 +29,7 @@ describe('plans grouped by business domain', () => {
   })
 
   it('the organisation sees its modules grouped by domain and can request a whole-domain add-on in one click', async () => {
-    api.getSubscription.mockResolvedValue({ data: { plan_id: 'essentials', plan_name: 'Essentials', status: 'active', read_only: false, seats: 3, seats_used: 1, addons: [], can_manage: true,
+    api.getSubscription.mockResolvedValue({ data: { plan_id: 'essential', plan_name: 'Essential', status: 'active', read_only: false, seats: 3, seats_used: 1, addons: [], can_manage: true,
       catalogue: CATALOGUE, domains: DOMAINS, modules: ['sales'], locked: ['expenses', 'employees', 'pay-runs'], addon_catalogue: ADDONS, plans: [] } })
     render(<SubscriptionCard />)
     const head = await screen.findByTestId('sub-domain-payroll_workforce')
@@ -40,7 +40,7 @@ describe('plans grouped by business domain', () => {
   })
 
   it('the admin picks a whole domain with one tick (stored as domain:<id>) or single modules', async () => {
-    api.adminSubOverview.mockResolvedValue({ data: { settings: { enforced: false, default_plan: 'essentials' }, catalogue: CATALOGUE, domains: DOMAINS, addons: ADDONS, organisations: [],
+    api.adminSubOverview.mockResolvedValue({ data: { settings: { enforced: false, default_plan: 'essential' }, catalogue: CATALOGUE, domains: DOMAINS, addons: ADDONS, organisations: [],
       plans: [{ id: 'professional', name: 'Professional', description: '', price_monthly: '99.00', price_yearly: '990.00', seat_limit: 25, modules: ['domain:accounting'], is_active: true, sort_order: 3 }] } })
     render(<SubscriptionAdminPanel />)
     expect(await screen.findByText('All of Books and Accounting')).toBeInTheDocument()          // plan list shows the domain, not 40 module names
@@ -54,7 +54,7 @@ describe('plans grouped by business domain', () => {
   })
 
   it('says plainly what the Enforce switch does: Off = every organisation sees everything, On = plans hide what they do not include', async () => {
-    const overview = (enforced) => ({ data: { settings: { enforced, default_plan: 'essentials' }, catalogue: CATALOGUE, domains: DOMAINS, addons: [], organisations: [], plans: [] } })
+    const overview = (enforced) => ({ data: { settings: { enforced, default_plan: 'essential' }, catalogue: CATALOGUE, domains: DOMAINS, addons: [], organisations: [], plans: [] } })
     api.adminSubOverview.mockResolvedValue(overview(false))
     const { unmount } = render(<SubscriptionAdminPanel />)
     expect(await screen.findByTestId('enforce-explainer')).toHaveTextContent('plans are not applied yet')

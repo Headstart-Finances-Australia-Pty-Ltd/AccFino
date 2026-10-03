@@ -55,7 +55,6 @@ const InvoicePage = lazy(() => import('./pages/InvoicePage.jsx'))
 const AccountingPage = lazy(() => import('./pages/accounting/AccountingPage.jsx'))
 const PayrollPage = lazy(() => import('./pages/accounting/PayrollPage.jsx'))
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'))
-const PaymentPage = lazy(() => import('./pages/PaymentPage.jsx'))
 const FileManagerPage = lazy(() => import('./pages/FileManagerPage.jsx'))
 const LicencePage = lazy(() => import('./pages/LicencePage.jsx'))
 const PricingAdminPage = lazy(() => import('./pages/PricingAdminPage.jsx'))
@@ -92,7 +91,7 @@ function AppRoutes() {
   return (
     <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'#888'}}>Loading…</div>}>
     <Routes>
-      <Route path="/upgrade"         element={<PaymentPage />} />
+      <Route path="/upgrade"         element={<Navigate to="/settings/setup" replace />} />       {/* plans and card payment live in Settings > Subscription now */}
       <Route path="/login"          element={user ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/reset-password" element={user ? <Navigate to="/" replace /> : <ResetPasswordPage />} />
       <Route path="/" element={<Guard><Layout /></Guard>}>

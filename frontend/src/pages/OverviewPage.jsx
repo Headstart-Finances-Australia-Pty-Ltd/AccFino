@@ -31,11 +31,7 @@ const buildCategories = (isDomainVisible, isModuleVisible) =>
                    status: m.status, phase: m.phase, plans: m.plans })),
   }))
 
-const PLAN_LABELS = {
-  base:    { label:'Vault Plan',    color:'#6b7280', emoji:'🔒' },
-  premium: { label:'Ultra Plan',    color:'#7c3aed', emoji:'⚡' },
-  custom:  { label:'Custom Plan',   color:'var(--brand)', emoji:'✨' },
-}
+const planColor = id => ({ essential: '#0e7490', business: '#2563eb', professional: '#7c3aed', ultra: '#b45309' }[id] || 'var(--brand)')
 
 export default function OverviewPage() {
   const { user }    = useAuth()
@@ -54,30 +50,10 @@ export default function OverviewPage() {
     licenceMyModules(user.id).then(r => setModules(r.data.modules || [])).catch(() => setModules([]))
   }, [user?.id])
 
-  // Vault plan IDs that do NOT include cash-flow
-  const VAULT_PLANS = new Set(['base', 'accounting_starter', ''])
+  // The plan is the only gate: a module that is on this page is part of the organisation's plan.
+  const canAccess = () => true
 
-  const canAccess = (key) => {
-    if (isAdmin || modules === 'all') return true
-    if (!modules) return false
-    // Always accessible to all users
-    if (key === 'setup' || key === 'dashboard' || key === 'accounting') return true
-    // Vault/Base plan: reconciliation always accessible
-    if (key === 'reconciliation') return true
-    // Smart Lending always accessible
-    if (key === 'lending') return true
-    // Cash Flow requires Accounting Pro or above — check plan_id, not just modules
-    // (modules may contain stale cash-flow from previous plan merges)
-    if (key === 'cash-flow') {
-      const planId = myPlan?.plan_id || 'base'
-      return !VAULT_PLANS.has(planId)
-    }
-    return modules.includes(key)
-  }
-
-  const planInfo = myPlan
-    ? (PLAN_LABELS[myPlan.plan_id] || { label:(myPlan.plan_name||'Plan')+' Plan', color:'var(--brand)', emoji:'✨' })
-    : null
+  const planInfo = myPlan ? { label: (myPlan.plan_name || 'Plan') + ' plan', color: planColor(myPlan.plan_id), emoji: '' } : null
 
   const firstName = (user?.name || '').split(' ')[0] || 'there'
   const initials  = (user?.name || user?.email || 'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
@@ -136,9 +112,9 @@ export default function OverviewPage() {
                   }}>
                     {planInfo.emoji} {planInfo.label}
                   </span>
-                  {!isAdmin && myPlan?.plan_id !== 'premium' && (
+                  {isOrgAdmin && !isAdmin && myPlan?.plan_id && myPlan.plan_id !== 'ultra' && (
                     <button className="btn btn-xs"
-                      onClick={()=>nav('/upgrade')}
+                      onClick={()=>nav('/settings/setup')}
                       style={{background:'#FF6B35',color:'#fff',border:'none',fontSize:'.68rem',padding:'2px 8px',borderRadius:100}}>
                       ⚡ Upgrade
                     </button>

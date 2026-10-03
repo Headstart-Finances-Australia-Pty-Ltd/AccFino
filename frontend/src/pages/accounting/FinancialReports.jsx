@@ -494,8 +494,7 @@ export default function FinancialReports({ userId }) {
   useEffect(() => {
     if (!userId) return
     legacy.getMyPlan(userId).then(r => {
-      const planId = r.data?.plan_id || 'base'
-      setHasProReports(!new Set(['base', 'accounting_starter', '']).has(planId))
+      setHasProReports(true)                                          // every financial report is part of Books & Accounting, so on every plan
     }).catch(() => {})
   }, [userId])
 

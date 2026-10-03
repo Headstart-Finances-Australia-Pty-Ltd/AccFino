@@ -61,6 +61,17 @@ export default function SubscriptionAdminPanel() {
             </div>
           </div>)
       })}
+      {!obj.modules.includes('*') && (d.features || []).length > 0 && (
+        <div style={{ border: '1px dashed var(--border)', borderRadius: 6, padding: '6px 10px' }} data-testid="plan-functions">
+          <div className="text-sm"><b>Functions</b> <span className="text-muted">(switch on or off for this plan, separately from the business domains)</span></div>
+          <div style={{ display: 'grid', gap: 4, marginTop: 4, paddingLeft: 4 }}>
+            {d.features.map(f => (
+              <label key={f.id} className="text-xs" style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <input type="checkbox" aria-label={f.name} checked={obj.modules.includes(f.id)} onChange={() => toggle(obj, setObj, f.id)} />
+                <span><b>{f.name}</b>{f.description ? <span className="text-muted"> - {f.description}</span> : null}</span>
+              </label>))}
+          </div>
+        </div>)}
       {!obj.modules.includes('*') && !(d.domains || []).length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{d.catalogue.map(c => <label key={c.id} className="text-sm"><input type="checkbox" checked={obj.modules.includes(c.id)} onChange={() => toggle(obj, setObj, c.id)} /> {c.name}</label>)}</div>}
     </div>
   )

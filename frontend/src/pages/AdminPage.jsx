@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import PlatformSettingsPanels from './admin/PlatformSettingsPanels.jsx'
 import OpenBankingSetupPage from './admin/OpenBankingSetupPage.jsx'
 import PaymentGatewayAdminPage from './PaymentGatewayAdminPage.jsx'
+import TenantAddressCheck from '../components/tenancy/TenantAddressCheck.jsx'
 import { useModuleVisibility } from '../hooks/useModuleVisibility.jsx'
 
 const ALLOWED_GST = ['','GST on Expenses','GST on Capital','GST on Income','GST Free Expenses','GST Free Income','BAS Excluded']
@@ -20,6 +21,7 @@ const ALL_TABS = [
   ['platform','🔌 Platform Settings', null],
   ['open-banking','🏦 Open Banking', ['basiq-admin-open-banking','openfeed-admin-open-banking']],     // Basiq + OpenFeed platform set-up (clients only ever see Settings > Open Banking)
   ['payments','💳 Payment Card Setup', ['square-admin-payments','stripe-admin-payments']],            // Square / Stripe: how AccFino charges organisations their subscription
+  ['addresses','🌐 Web Addresses', null],                 // https://<organisation>.<your domain>: what is still missing
   ['ml','🧠 ML Training', 'ml-training'],
 ]
 // A deep link such as /admin/api-keys?tab=open-banking opens that tab straight away.
@@ -88,6 +90,7 @@ export default function AdminPage() {
       {tab==='platform' && <PlatformSettingsPanels/>}
       {tab==='open-banking' && <OpenBankingSetupPage embedded />}
       {tab==='payments' && <PaymentGatewayAdminPage embedded />}
+      {tab==='addresses' && <TenantAddressCheck />}
 
       {/* ── ML Training ── */}
       {tab==='ml' && (

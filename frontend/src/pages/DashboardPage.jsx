@@ -200,27 +200,11 @@ export default function DashboardPage() {
                 {(() => {
                   const pid = myPlan.plan_id || 'base'
                   // Show human-readable plan name
-                  // Only known bundle plans get simple names
-                  // Individual module purchases always show "Base + X Plan"
-                  // Use plan name directly from pricing.json via myPlan
-                  if (myPlan.plan_name) return myPlan.plan_name + ' Plan'
-                  const BUNDLE_NAMES = { base:'Vault', premium:'Ultra' }
-                  if (BUNDLE_NAMES[pid]) return BUNDLE_NAMES[pid] + ' Plan'
-                  // Custom multi-module — show "Base + Trading Plan"
-                  const SHORT = {
-                    dashboard:'Base', reconciliation:'Reconciliation',
-                    trading:'Trading', 'cash-flow':'Cash Flow', invoice:'Invoice',
-                  }
-                  const activeMods = (myPlan.modules || [])
-                    .map(m => SHORT[m]).filter(Boolean)
-                  // Always starts with Base, then add paid modules
-                  const baseLabel = ['Base']
-                  const paidMods  = activeMods.filter(m => m !== 'Base' && m !== 'Reconciliation')
-                  return [...baseLabel, ...paidMods].join(' + ') + ' Plan'
+                  return (myPlan.plan_name || 'Plan') + ' plan'          // the organisation plan: Starter, Business, Professional or Complete
                 })()}
               </span>
-              {!isAdmin && myPlan.plan_id !== 'premium' && (
-                <button className="btn btn-primary btn-sm" onClick={() => nav('/upgrade')}>
+              {!isAdmin && myPlan.plan_id && myPlan.plan_id !== 'ultra' && (
+                <button className="btn btn-primary btn-sm" onClick={() => nav('/settings/setup')}>
                   ⚡ Upgrade Plan
                 </button>
               )}

@@ -283,12 +283,12 @@ export default function LoginPage() {
                           cursor: 'pointer',
                           background: active
                             ? '#1a73e8'
-                            : id === 'premium'
+                            : id === 'ultra'
                               ? '#EAF1FB'
                               : 'var(--surface)',
                           color: active
                             ? '#fff'
-                            : id === 'premium'
+                            : id === 'ultra'
                               ? '#1a73e8'
                               : 'var(--text-1)',
                           fontSize: '.72rem',

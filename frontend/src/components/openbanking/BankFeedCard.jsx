@@ -92,6 +92,11 @@ export default function BankFeedCard({ isAdmin = false }) {
   })
 
   if (!st) return <div className="empty-state" style={{ padding: 40 }}><p>Loading…</p></div>
+  if (st.plan_allows === false) return (
+    <div className="card" data-testid="feed-not-in-plan" style={{ maxWidth: 640 }}>
+      <h3 style={{ marginBottom: 6 }}>Live bank feeds are not part of your plan</h3>
+      <p className="text-sm text-muted" style={{ marginBottom: 0 }}>{st.plan_name ? <>The <b>{st.plan_name}</b> plan doesn't include open banking. </> : null}Statement upload still works for reconciliation. To add live bank feeds, upgrade the plan under Settings &gt; Subscription.</p>
+    </div>)
   const manage = st.can_manage
   const sortedAccounts = [...st.accounts].sort((x, y) => (x.provider || '').localeCompare(y.provider || '') || (x.name || '').localeCompare(y.name || ''))
   const offCount = st.accounts.filter(a => !a.enabled).length
