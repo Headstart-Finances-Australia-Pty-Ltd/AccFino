@@ -10,6 +10,8 @@ import { ReconciliationContext } from '../components/layout/Layout.jsx'
 import { Landmark } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useModuleVisibility } from '../hooks/useModuleVisibility.jsx'
+import { sameAccountNumber } from '../lib/accountMatch.js'
+import { inputModeFromSearch } from '../lib/returnTo.js'
 
 export default function ReconciliationPage() {
   const { user }   = useAuth()
@@ -32,7 +34,7 @@ export default function ReconciliationPage() {
   const mainTab         = recon.mainTab
   const setMainTab      = recon.setMainTab
 
-  const [inputMode,      setInputMode]      = useState('csv')
+  const [inputMode,      setInputMode]      = useState(() => inputModeFromSearch(window.location.search))   // back from Settings > Open Banking: stay on the Open Banking input
   const [running,        setRunning]        = useState(false)
   const [currency,       setCurrency]       = useState('AUD')   // input currency; output always AUD
 
@@ -183,12 +185,11 @@ export default function ReconciliationPage() {
         .map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')
     )
     const csvFile = new File([[header,...lines].join('\n')], `openbanking_${Date.now()}.csv`, {type:'text/csv'})
-    const digits = v => String(v || '').replace(/\D/g, '')
     const obBank = meta.bank || rows[0]?.bank || 'Open Banking'
     const obNum  = meta.number || rows[0]?.account || 'OB'
     const isOb = f => f?.name?.startsWith('openbanking_')
     setAccounts(prev => {
-      const same = a => digits(a.accountNumber) && digits(a.accountNumber) === digits(obNum)
+      const same = a => sameAccountNumber(a.accountNumber, obNum)                       // a masked bank-feed number (...1912) matches the full number on the statement
                      || (a.bankName === obBank && a.accountNumber === obNum)
       const at = prev.findIndex(same)
       if (at === -1) return [...prev, { bankName:obBank, accountNumber:obNum, accountName:meta.name||'', files:[csvFile], fileNames:[csvFile.name], restored:false }]

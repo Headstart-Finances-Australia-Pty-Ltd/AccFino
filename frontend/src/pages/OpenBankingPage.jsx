@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { safeReturn, returnLabel } from '../lib/returnTo.js'
 import { obStatus, obCreateUser, obAccounts, obTransactions, obSavedAccounts, obSaveAccounts, getBanks } from '../lib/api.js'
 import BankFeedCard from '../components/openbanking/BankFeedCard.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
@@ -15,14 +16,19 @@ const fmtAUD = n => n==null?'—':new Intl.NumberFormat('en-AU',{style:'currency
 // rather than a bank feed, so its setup moved to Settings > Payment Setup
 // (see SquarePanel in components/payments/). Every provider can be switched
 // off platform-wide from Admin > Modules Management (basiq-open-banking / openfeed-open-banking).
-function OpenfeedPanel() {
+function OpenfeedPanel({ onConnected }) {
   const { user } = useAuth()
   const isAdmin = !!(user?.is_admin || (user?.roles || []).includes('admin'))
-  return <BankFeedCard isAdmin={isAdmin} />
+  return <BankFeedCard isAdmin={isAdmin} onConnected={onConnected} />
 }
 
 export default function OpenBankingPage() {
   const { isModuleVisible, isLocked, subscription } = useModuleVisibility()
+  // Opened from another screen (e.g. Reconciliation)? Go back there automatically once a bank is connected.
+  const nav = useNavigate()
+  const [sp] = useSearchParams()
+  const returnTo = safeReturn(sp.get('returnTo'))
+  const goBack = React.useCallback(() => { if (returnTo) setTimeout(() => nav(returnTo), 900) }, [returnTo])     // a moment to read "connected" first
   const { user } = useAuth()
   const isAdmin = !!(user?.is_admin || (user?.roles || []).includes('admin'))
   const PROVIDERS = [
@@ -57,7 +63,7 @@ export default function OpenBankingPage() {
   const saveForRecon = async () => {
     const list = Object.values(saved)
     if (list.some(a => !a.bank)) { toast.error('Choose a bank for each account you tick'); return }
-    try { await obSaveAccounts(list); toast.success(`${list.length} account${list.length!==1?'s':''} available in Reconciliation`) }
+    try { await obSaveAccounts(list); toast.success(`${list.length} account${list.length!==1?'s':''} available in Reconciliation`); if (list.length) goBack() }
     catch (e) { toast.error(e.response?.data?.detail || 'Could not save') }
   }
 
@@ -105,6 +111,11 @@ export default function OpenBankingPage() {
 
   return (
     <div className="fade-in">
+      {returnTo && (
+        <div className="alert alert-info text-sm" data-testid="return-banner" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span>Set up your bank account here. When it is connected you are taken back to <b>{returnLabel(returnTo)}</b> automatically.</span>
+          <Link className="btn btn-outline btn-xs" to={returnTo} data-testid="return-link">&larr; Back to {returnLabel(returnTo)}</Link>
+        </div>)}
       <div style={{marginBottom:16}}>
         <div className="flex items-center gap-1">
           <Landmark size={22} />
@@ -121,7 +132,7 @@ export default function OpenBankingPage() {
         </div>
       )}
 
-      {provider === 'openfeed' && <OpenfeedPanel />}
+      {provider === 'openfeed' && <OpenfeedPanel onConnected={goBack} />}
 
       {provider === 'basiq' && <>
       {/* Platform not set up yet: clients get a plain message; only the AccFino administrator is pointed to the set-up screen */}
