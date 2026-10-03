@@ -147,3 +147,14 @@ PLAN FUNCTIONS - "OPEN BANKING" CHECKBOX PER PLAN: Admin > Pricing > (a plan) Ed
   All four plans include it by default (one-off migration to catalogue version 6 adds it to every plan; an administrator's later removal is never undone). An add-on can sell it to a plan that lacks it.
   Files: subscription/service.py (FEATURES), align.py, subscription_api.py, openfeed_api.py, react_api.py, useModuleVisibility.jsx, OpenBankingPage.jsx, ReconciliationPage.jsx, BankFeedCard.jsx,
   SubscriptionAdminPanel.jsx, SubscriptionCard.jsx, tests.
+
+
+RECONCILIATION > OPEN BANKING: OpenFeed accounts showed "OpenFeed - soon", were greyed out and counted as "0 of 0 selected" - a leftover from when OpenFeed could not be pulled. They are now selectable (Basiq and OpenFeed
+  counted together) and pulled through the server. Pulled rows from a bank feed carry a MASKED account number (xxxxxx xxxxx1912), which now merges into the statement account whose full number ends in those digits
+  (lib/accountMatch.js; at least 4 digits). Files: OpenBankingInput.jsx, ReconciliationPage.jsx, accountMatch.js, ReconBankFeed.test.jsx.
+
+
+RETURN TO RECONCILIATION AFTER SETTING UP A BANK ACCOUNT: Reconciliation > Open Banking > "Open settings" / "Add or change bank accounts" now opens Settings > Open Banking with a return address
+  (?returnTo=/reconciliation?input=openbanking). A banner says where it will return to (with a Back link). When an OpenFeed bank is connected - or Basiq accounts are saved for Reconciliation - the page goes back
+  automatically after a moment, and Reconciliation opens on its Open Banking input. A declined/failed connection stays on Settings; only addresses inside AccFino are accepted as a return address.
+  Files: lib/returnTo.js, OpenBankingInput.jsx, OpenBankingPage.jsx, BankFeedCard.jsx, ReconciliationPage.jsx, ReturnToRecon.test.jsx.
