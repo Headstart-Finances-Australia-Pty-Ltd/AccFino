@@ -1,0 +1,322 @@
+"""
+Subscription entitlements - what an organisation may use, decided from its plan + add-ons.
+
+  * ENFORCEMENT IS OFF BY DEFAULT (Admin > Modules Management > Subscriptions). While off, every organisation can use everything,
+    exactly as before this feature existed. Turn it on once plans are assigned.
+  * An organisation with no subscription row is "grandfathered": all modules, never locked.
+  * A module is allowed when the plan or any add-on lists it (or lists "*"). Platform administrators are never blocked.
+  * An expired / cancelled-and-ended subscription is READ-ONLY: everything stays visible, but anything that posts or edits is refused.
+    Data is never deleted.
+  * Seats: plan seat_limit + extra_seats from add-ons; NULL plan limit = unlimited. Existing members are never removed.
+"""
+import json
+from datetime import date, timedelta
+from decimal import Decimal
+
+from fastapi import Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from accfino.core import models as m
+from accfino.core.subscription.models import Addon, OrgSubscription, Plan
+from accfino.shared.db.database import get_db
+
+ENFORCED_KEY = "platform.subscriptions_enforced"
+DEFAULT_PLAN_KEY = "platform.default_plan"
+GRACE_DAYS = 7                                       # a lapsed payment keeps working this long before the organisation turns read-only
+SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
+# The business domains and the modules inside each (mirrors frontend/src/core/config/modules.json - a test keeps the two in step).
+# A plan or add-on can list single module ids, a whole domain as "domain:<id>", or "*" for everything.
+DOMAINS = [
+    ('accounting', 'Books and Accounting', ['dashboard-accounting', 'general-ledger', 'reconciliation', 'sales', 'purchases', 'expenses', 'inventory-trading', 'fixed-assets', 'financial-reports', 'bulk-import']),
+    ('payroll_workforce', 'Payroll & Workforce', ['overview-payroll', 'employees', 'timesheets', 'time-leave', 'payrun', 'pay-runs', 'leave-entitlements', 'superannuation', 'payg-withholding', 'payslips', 'stp-lodgement', 'payroll-payments', 'payroll-reports', 'payroll-audit', 'pay-items', 'payroll-settings', 'my-pay']),
+    ('tax_compliance', 'Taxation & Compliance', ['overview-tax', 'tax-returns', 'income-tax', 'gst-bas-ias', 'cgt', 'fbt-other-taxes', 'tax-planning', 'tax-calendar', 'tax-workpapers', 'tax-reports', 'tax-lodgement-ato', 'tax-settings', 'tax-audit']),
+    ('assets_investments', 'Assets, Investments & Wealth', ['shares-etfs', 'crypto-digital-assets', 'property', 'funds-bonds', 'investment-portfolio', 'wealth-net-worth']),
+    ('lending_treasury', 'Smart Lending, Credit & Treasury', ['financial-statement-analysis', 'credit-assessment', 'loan-origination', 'loan-management', 'collections', 'treasury-liquidity']),
+    ('planning_insights', 'Planning & Intelligence', ['cash-flow-forecasting', 'budgeting-forecasting', 'scenario-planning', 'management-reporting', 'cfo-insights', 'ai-financial-assistant', 'risk-anomaly-detection']),
+    ('practice', 'Practice & Client Services', ['practice-management', 'clients-entities', 'workpapers-documents', 'client-portal', 'engagements-workflows', 'billing']),
+]
+DOMAIN_IDS = [d[0] for d in DOMAINS]
+DOMAIN_MODULES = {d[0]: list(d[2]) for d in DOMAINS}
+
+# FUNCTIONS: things a plan can switch on or off that are not a menu module. They are ticked separately from the business domains in Admin > Pricing > Edit plan ("Functions").
+FEATURES = [
+    ("open-banking", "Open banking - live bank feeds", "Connect bank accounts (Basiq, OpenFeed) so transactions arrive without statement files. Settings > Open Banking and the reconciliation bank-feed input."),
+]
+FEATURE_IDS = [f[0] for f in FEATURES]
+
+# Every sellable module, in domain order. The accounting modules are also gated on the server (see install()); a locked module in the other
+# domains is hidden from the menu and its tabs.
+CATALOGUE = [
+    ('dashboard-accounting', 'Dashboard'),
+    ('general-ledger', 'General Ledger & Accounting'),
+    ('reconciliation', 'Banking & Reconciliation'),
+    ('sales', 'Sales & Receivables'),
+    ('purchases', 'Purchases & Payables'),
+    ('expenses', 'Expenses'),
+    ('inventory-trading', 'Inventory & Trading'),
+    ('fixed-assets', 'Fixed Assets'),
+    ('financial-reports', 'Financial Reports'),
+    ('bulk-import', 'Bulk data import (CSV)'),
+    ('overview-payroll', 'Dashboard'),
+    ('employees', 'Employees'),
+    ('timesheets', 'Timesheets'),
+    ('time-leave', 'Time & Leave'),
+    ('payrun', 'Payrun'),
+    ('pay-runs', 'Pay Runs'),
+    ('leave-entitlements', 'Leave & Entitlements'),
+    ('superannuation', 'Superannuation'),
+    ('payg-withholding', 'PAYG Withholding'),
+    ('payslips', 'Payslips'),
+    ('stp-lodgement', 'STP & Compliance'),
+    ('payroll-payments', 'Payroll Payments'),
+    ('payroll-reports', 'Payroll Reports'),
+    ('payroll-audit', 'Payroll Audit'),
+    ('pay-items', 'Pay Items'),
+    ('payroll-settings', 'Payroll Settings'),
+    ('my-pay', 'My Pay'),
+    ('overview-tax', 'Compliance Dashboard'),
+    ('tax-returns', 'Tax Returns'),
+    ('income-tax', 'Income Tax Workings'),
+    ('gst-bas-ias', 'GST / BAS / IAS'),
+    ('cgt', 'CGT'),
+    ('fbt-other-taxes', 'FBT & Division 7A'),
+    ('tax-planning', 'Tax Planning'),
+    ('tax-calendar', 'Compliance Calendar'),
+    ('tax-workpapers', 'Workpapers & Evidence'),
+    ('tax-reports', 'Tax Reports'),
+    ('tax-lodgement-ato', 'Lodgement Readiness'),
+    ('tax-settings', 'Rates & Settings'),
+    ('tax-audit', 'Audit Trail'),
+    ('shares-etfs', 'Shares & ETFs'),
+    ('crypto-digital-assets', 'Crypto & Digital Assets'),
+    ('property', 'Property'),
+    ('funds-bonds', 'Funds & Bonds'),
+    ('investment-portfolio', 'Investment Portfolio'),
+    ('wealth-net-worth', 'Wealth & Net Worth'),
+    ('financial-statement-analysis', 'Financial & Statement Analysis'),
+    ('credit-assessment', 'Credit Assessment'),
+    ('loan-origination', 'Loan Origination'),
+    ('loan-management', 'Loan Management'),
+    ('collections', 'Collections'),
+    ('treasury-liquidity', 'Treasury & Liquidity'),
+    ('cash-flow-forecasting', 'Cash Flow Forecasting'),
+    ('budgeting-forecasting', 'Budgeting & Forecasting'),
+    ('scenario-planning', 'Scenario Planning'),
+    ('management-reporting', 'Management Reporting'),
+    ('cfo-insights', 'CFO Insights'),
+    ('ai-financial-assistant', 'AI Financial Assistant'),
+    ('risk-anomaly-detection', 'Risk & Anomaly Detection'),
+    ('practice-management', 'Practice Management'),
+    ('clients-entities', 'Clients & Entities'),
+    ('workpapers-documents', 'Workpapers & Documents'),
+    ('client-portal', 'Client Portal'),
+    ('engagements-workflows', 'Engagements & Workflows'),
+    ('billing', 'Billing'),
+]
+CATALOGUE += [(f[0], f[1]) for f in FEATURES]
+CATALOGUE_IDS = [c[0] for c in CATALOGUE]
+
+
+def expand(mods) -> set:
+    """Turn a plan/add-on module list into plain module ids: "*" = everything, "domain:<id>" = every module of that domain."""
+    out = set()
+    for x in mods or []:
+        if x == "*":
+            return set(CATALOGUE_IDS)
+        if isinstance(x, str) and x.startswith("domain:"):
+            out |= set(DOMAIN_MODULES.get(x[7:], []))
+        elif x in CATALOGUE_IDS:
+            out.add(x)
+    return out
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# PRICING (AUD per month, GST included - the way Xero quotes it). Positioned against the July-2026 Australian list prices:
+#   Xero  Ignite $37 | Grow $78 | Comprehensive $107 | Ultimate 10 $143       (invoices/bills capped on Ignite; payroll, expenses, projects extra)
+#   MYOB  Business Lite $35 | Pro $70 | AccountRight Plus ~$141 | Premier ~$210   (payroll +$3/employee, inventory +$22)
+#   Zoho  Books Standard $16.50 | Professional $33 | Premium $44 | Elite $181.50   (annual billing, 3-15 users, per-organisation)
+#   ERPNext  free licence; Frappe Cloud ~US$50 for the managed Small Business plan with unlimited users (you do the set-up yourself)
+# Users: Xero and ERPNext include unlimited users; Zoho Books caps them (3 / 5 / 10 / 10 / 15) and sells extra users at about A$4.40 each; MYOB prices payroll
+# per employee. AccFino follows the Zoho model so price tracks the people using it: 1 / 3 / 6 / 15 users, extra users A$6 each (A$25 for 5).
+# AccFino: unlimited invoices, bills and bank rules on every plan; the plan decides WHICH BUSINESS DOMAINS you get and how many users.
+# Yearly = 10 x monthly (two months free). All of this is editable in Admin > Modules Management > Subscriptions.
+# ---------------------------------------------------------------------------------------------------------------------------------
+DEFAULT_PLANS = [
+    dict(id="essential", name="Essential", description="The whole Books & Accounting domain: ledger, banking and reconciliation, sales, purchases, expenses, inventory, fixed assets, reports and bulk import. Unlimited invoices and bills. 1 user.",
+         price_monthly="25.00", price_yearly="275.00", seat_limit=1, modules=["domain:accounting", "open-banking"], sort_order=1),
+    dict(id="business", name="Business", description="Everything in Essential plus Planning & Intelligence (cash-flow forecasting, budgets, scenarios, management reporting). 1 user.",
+         price_monthly="59.00", price_yearly="649.00", seat_limit=1, modules=["domain:accounting", "domain:planning_insights", "open-banking"], sort_order=2),
+    dict(id="professional", name="Professional", description="Books + Payroll & Workforce + Taxation & Compliance + Planning & Intelligence. 1 user.",
+         price_monthly="99.00", price_yearly="1089.00", seat_limit=1, modules=["domain:accounting", "domain:payroll_workforce", "domain:tax_compliance", "domain:planning_insights", "open-banking"], sort_order=3),
+    dict(id="ultra", name="Ultra", description="Every business domain, including Assets & Investments, Smart Lending & Treasury and Practice. 1 user.",
+         price_monthly="179.00", price_yearly="1969.00", seat_limit=1, modules=["*"], sort_order=4),
+]
+# Yearly = 11 x monthly (one month free). EVERY plan is for 1 user; more users come in a user pack arranged with the AccFino team (an add-on with extra_seats, priced per organisation).
+# Add-ons: one per business domain (a plan can bolt on exactly the domain it needs). Books & Accounting needs none: every plan has all of it.
+DEFAULT_ADDONS = [
+    dict(id="addon-payroll", name="Payroll & Workforce", description="Employees, timesheets, pay runs, payslips and STP.", price_monthly="15.00", modules=["domain:payroll_workforce"], extra_seats=0, sort_order=1),
+    dict(id="addon-tax", name="Taxation & Compliance", description="Tax returns, CGT, GST/BAS/IAS and ATO lodgement.", price_monthly="15.00", modules=["domain:tax_compliance"], extra_seats=0, sort_order=2),
+    dict(id="addon-planning", name="Planning & Intelligence", description="Cash-flow forecasting, budgets, scenarios and management reporting.", price_monthly="15.00", modules=["domain:planning_insights"], extra_seats=0, sort_order=3),
+    dict(id="addon-assets", name="Assets, Investments & Wealth", description="Shares, crypto, property and portfolio tracking.", price_monthly="12.00", modules=["domain:assets_investments"], extra_seats=0, sort_order=4),
+    dict(id="addon-lending", name="Smart Lending, Credit & Treasury", description="Credit assessment, loans, collections and treasury.", price_monthly="19.00", modules=["domain:lending_treasury"], extra_seats=0, sort_order=5),
+    dict(id="addon-practice", name="Practice & Client Services", description="Client entities, workpapers, engagements, portal and billing for accountants and bookkeepers.", price_monthly="25.00", modules=["domain:practice"], extra_seats=0, sort_order=6),
+]
+YEARLY_MONTHS = 11              # a year is charged as 11 months: one month free
+CATALOGUE_VERSION_KEY = "platform.catalogue_version"
+CATALOGUE_VERSION = "6"          # 6 = 'Open banking' became a function each plan switches on or off (Admin > Pricing > Edit plan); 5 = ONE price list: Essential / Business / Professional / Ultra, 1 user each (more users in an arranged pack), yearly = 11 months; every older plan removed; enforced
+
+
+
+def _loads(s):
+    try:
+        v = json.loads(s or "[]")
+        return v if isinstance(v, list) else []
+    except ValueError:
+        return []
+
+
+def _plan_row(p):
+    return Plan(**{**p, "modules": json.dumps(p["modules"]), "price_monthly": Decimal(p["price_monthly"]), "price_yearly": Decimal(p["price_yearly"])})
+
+
+def _addon_row(a):
+    return Addon(**{**a, "modules": json.dumps(a["modules"]), "price_monthly": Decimal(a["price_monthly"])})
+
+
+def ensure_catalogue(db: Session):
+    """The ONE price list. A fresh database gets Starter / Business / Professional / Complete and the add-ons. An existing one is moved once (version 4) by
+    align.migrate_catalogue: organisations on any older plan are assigned to the new plans, every older plan and redundant add-on is deleted, seats become 1 per plan (extra users in per-organisation packs) and plans are enforced."""
+    if db.query(Plan).count() == 0 and db.query(Addon).count() == 0:
+        for p in DEFAULT_PLANS:
+            db.add(_plan_row(p))
+        for a in DEFAULT_ADDONS:
+            db.add(_addon_row(a))
+        for key, val in ((DEFAULT_PLAN_KEY, "essential"), (ENFORCED_KEY, "on"), (CATALOGUE_VERSION_KEY, CATALOGUE_VERSION)):
+            row = db.get(m.SystemSetting, key)
+            if row is None:
+                db.add(m.SystemSetting(key=key, value=val))
+            else:
+                row.value = val
+        db.flush()
+        return
+    ver = db.get(m.SystemSetting, CATALOGUE_VERSION_KEY)
+    have = (ver.value or "0") if ver is not None else "0"
+    if have >= CATALOGUE_VERSION:
+        return
+    if ver is None:                                              # set first: the migration itself reads plans and must not start another migration
+        db.add(m.SystemSetting(key=CATALOGUE_VERSION_KEY, value=CATALOGUE_VERSION))
+    else:
+        ver.value = CATALOGUE_VERSION
+    db.flush()
+    from accfino.core.subscription.align import add_feature_to_plans, migrate_catalogue
+    if have < "5":
+        migrate_catalogue(db, have)
+    else:
+        add_feature_to_plans(db, "open-banking")                  # version 5 -> 6: every plan keeps live bank feeds, now as a switch an administrator can turn off per plan
+
+
+def get_settings(db: Session) -> dict:
+    e = db.get(m.SystemSetting, ENFORCED_KEY)
+    d = db.get(m.SystemSetting, DEFAULT_PLAN_KEY)
+    return {"enforced": True if e is None else (e.value or "").lower() == "on", "default_plan": (d.value if d and d.value else "essential")}
+
+
+def set_settings(db: Session, enforced=None, default_plan=None):
+    for key, val in ((ENFORCED_KEY, None if enforced is None else ("on" if enforced else "off")), (DEFAULT_PLAN_KEY, default_plan)):
+        if val is None:
+            continue
+        row = db.get(m.SystemSetting, key)
+        if row is None:
+            db.add(m.SystemSetting(key=key, value=val))
+        else:
+            row.value = val
+    db.flush()
+
+
+def start_subscription(db: Session, org_id: int):
+    """Called when an organisation is created: it gets the platform's default plan (harmless while enforcement is off)."""
+    ensure_catalogue(db)
+    plan = db.get(Plan, get_settings(db)["default_plan"]) or db.query(Plan).filter_by(is_active=True).order_by(Plan.sort_order).first()
+    if plan and db.get(OrgSubscription, org_id) is None:
+        db.add(OrgSubscription(org_id=org_id, plan_id=plan.id, status="active"))
+        db.flush()
+
+
+def _expired(sub: OrgSubscription, today: date) -> bool:
+    if sub.status == "expired":
+        return True
+    if sub.status == "trial":
+        return bool(sub.trial_ends and sub.trial_ends < today)
+    if sub.status == "cancelled":
+        return not sub.period_end or sub.period_end < today
+    return bool(sub.period_end and sub.period_end + timedelta(days=GRACE_DAYS) < today)        # active / past_due
+
+
+def member_count(db: Session, org_id: int) -> int:
+    return db.query(m.OrgMembership).filter_by(org_id=org_id).count()
+
+
+def entitlements(db: Session, org_id: int, today: date = None) -> dict:
+    """-> enforced, grandfathered, plan_id, plan_name, status, read_only, modules (list), locked (list), seats, seats_used, addons, dates."""
+    today = today or date.today()
+    ensure_catalogue(db)
+    cfg = get_settings(db)
+    sub = db.get(OrgSubscription, org_id)
+    used = member_count(db, org_id)
+    base = dict(enforced=cfg["enforced"], seats_used=used, catalogue=[dict(id=i, name=n) for i, n in CATALOGUE], features=[dict(id=i, name=n, description=d) for i, n, d in FEATURES], domains=[dict(id=i, name=n, modules=ms) for i, n, ms in DOMAINS])
+    if sub is None or db.get(Plan, sub.plan_id) is None:
+        return {**base, "grandfathered": True, "plan_id": None, "plan_name": "All modules (no plan assigned)", "status": "active", "read_only": False,
+                "modules": list(CATALOGUE_IDS), "locked": [], "seats": None, "addons": [], "trial_ends": None, "period_end": None, "billing_period": None}
+    plan = db.get(Plan, sub.plan_id)
+    ads = [a for a in (db.get(Addon, i) for i in dict.fromkeys(_loads(sub.addons))) if a]               # each add-on once, however often it is listed
+    allowed = expand(_loads(plan.modules))
+    for a in ads:
+        allowed |= expand(_loads(a.modules))
+    seats = None if plan.seat_limit is None else plan.seat_limit + sum(a.extra_seats or 0 for a in ads)
+    expired = _expired(sub, today)
+    locked = [] if not cfg["enforced"] else [i for i in CATALOGUE_IDS if i not in allowed]
+    return {**base, "grandfathered": False, "plan_id": plan.id, "plan_name": plan.name, "status": "expired" if expired else sub.status, "read_only": bool(expired and cfg["enforced"]),
+            "modules": [i for i in CATALOGUE_IDS if i in allowed], "locked": locked, "seats": seats, "addons": [dict(id=a.id, name=a.name) for a in ads],
+            "trial_ends": sub.trial_ends.isoformat() if sub.trial_ends else None, "period_end": sub.period_end.isoformat() if sub.period_end else None, "billing_period": sub.billing_period}
+
+
+def is_allowed(ent: dict, features) -> bool:
+    if not ent["enforced"] or ent["grandfathered"]:
+        return True
+    return any(f in ent["modules"] for f in features)
+
+
+def check(db: Session, ctx, features, method: str = "GET"):
+    """Raise 402 when this organisation's subscription does not cover the feature (or is read-only and the call changes data)."""
+    if ctx.is_admin:                                   # platform administrators (support) are never blocked
+        return
+    ent = entitlements(db, ctx.org.id)
+    if not ent["enforced"]:
+        return
+    if ent["read_only"] and method not in SAFE_METHODS:
+        raise HTTPException(402, "This organisation's subscription has expired, so it is read-only. Renew the plan to post or edit (Settings > Business Setup > Organisation > Subscription).")
+    if not is_allowed(ent, features):
+        label = {i: n for i, n in CATALOGUE}.get(features[0], features[0])
+        raise HTTPException(402, f"'{label}' is not included in your {ent['plan_name']} plan. Ask an owner to upgrade or add it (Settings > Business Setup > Organisation > Subscription).")
+
+
+def feature_gate(*features):
+    """Router-level dependency: include_router(..., dependencies=[Depends(feature_gate('sales'))]). Several ids = any of them."""
+    from accfino.core.security.context import current_org
+
+    def dep(request: Request, ctx=Depends(current_org), db: Session = Depends(get_db)):
+        check(db, ctx, features, request.method)
+    return dep
+
+
+def check_seat(db: Session, ctx):
+    """Block adding a member beyond the licensed users. Licensed seats are a licence term, so this applies whether or not module enforcement is on;
+    codes still waiting to be used count as taken. Existing members are never removed."""
+    if ctx.is_admin:
+        return
+    from accfino.core.tenancy.service import seat_status
+    st = seat_status(db, ctx.org.id)
+    if st["available"] is not None and st["available"] <= 0:
+        plan = entitlements(db, ctx.org.id)["plan_name"]
+        raise HTTPException(402, f"Your {plan} plan allows {st['licensed']} user(s) and all are in use or reserved by access codes. Upgrade the plan, revoke unused access codes, or add a seat pack.")
