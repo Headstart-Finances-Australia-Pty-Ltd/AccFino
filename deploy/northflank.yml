@@ -1,0 +1,63 @@
+# AccFino - Northflank deployment configuration
+# Deploy as a Combined Service (builds + runs in one service)
+
+name: accfino
+description: AccFino Bank Reconciliation SaaS
+
+services:
+  - name: accfino-app
+    billing:
+      deploymentPlan: nf-compute-50   # 0.5 vCPU, 512MB RAM minimum
+      # Recommended: nf-compute-100 (1 vCPU, 1GB) for better ML model performance
+
+    deployment:
+      instances: 1
+      docker:
+        configType: dockerfile
+        dockerFilePath: /Dockerfile
+        buildContext: /
+
+    ports:
+      - name: http
+        internalPort: 8001        # Must match PORT env var
+        public: true
+        protocol: HTTP
+
+    environmentVariables:
+      # ── REQUIRED ──────────────────────────────────────────────────────────
+      - name: DATABASE_URL
+        value: ""                 # Set to your Neon PostgreSQL connection string
+        # Example: postgresql+psycopg2://user:pass@ep-xxx.neon.tech/neondb?sslmode=require
+
+      # ── Optional ──────────────────────────────────────────────────────────
+      - name: PORT
+        value: "8001"
+
+      - name: CORS_ORIGINS
+        value: ""                 # Add your Northflank app domain if needed
+        # Example: https://accfino--accfino-app.code.run
+
+      - name: ACCFINO_DATA_ROOT
+        value: "/data"
+
+      - name: PYTHONIOENCODING
+        value: "utf-8"
+
+      - name: PYTHONWARNINGS
+        value: "ignore"
+
+    healthChecks:
+      - protocol: HTTP
+        path: /ready
+        port: 8001
+        initialDelaySeconds: 120  # ML models need time to load
+        periodSeconds: 20
+        timeoutSeconds: 10
+        failureThreshold: 5
+
+    # REQUIRED in production: persistent volume for business data + documents (ACCFINO_DATA_ROOT).
+    # Without it, reference data, uploaded files and generated documents are lost on every deploy.
+    volumes:
+      - name: accfino-data
+        mountPath: /data
+        size: 5Gi

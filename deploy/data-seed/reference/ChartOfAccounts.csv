@@ -1,0 +1,64 @@
+﻿*Name,*Type
+Assets Immediate Write off,Expense
+Bank Fees,Expense
+Business Development,Expense
+Business Loan,Current Liability
+Cleaning,Expense
+Client Gifts,Expense
+Client Sales Meeting,Expense
+Computer Equipment,Fixed Asset
+Consulting & Accounting,Expense
+Cost of Goods Sold,Direct Costs
+Depreciation,Expense
+Dividends,Equity
+Donation,Expense
+Entertainment,Expense
+Filing Fee,Expense
+Formation Costs Write Off,Expense
+Freight & Courier,Expense
+GST,GST
+General Expenses,Expense
+Income Tax Expense,Expense
+Insurance,Expense
+Interest Expense,Expense
+Interest Income,Other Income
+Inventory,Inventory
+Legal expenses,Expense
+Less Accumulated Depreciation on Computer Equipment,Fixed Asset
+Less Accumulated Depreciation on Motor Vehicles,Fixed Asset
+Less Accumulated Depreciation on Office Equipment,Fixed Asset
+Less Provision for Doubtful Debts,Current Asset
+"Light, Power, Heating",Expense
+Loans from Directors / Shareholders,Current Liability
+Loans to Directors / Shareholders,Current Asset
+MV - Fuel,Expense
+MV - Registration & Insurance,Expense
+MV - Repair & Maintenance,Expense
+Marketing & Advertisement,Expense
+Materials & Consumables,Expense
+Motor Vehicles,Fixed Asset
+Office Equipment,Fixed Asset
+Office Expenses,Expense
+Other Revenue,Revenue
+Owner A Drawings,Equity
+Owner A Funds Introduced,Equity
+Owner A Share Capital,Equity
+Parking & Tolls,Expense
+Prepayments,Current Asset
+Printing & Stationery,Expense
+Product Sales,Revenue
+Project Purchases,Direct Costs
+Rent,Expense
+Repairs and Maintenance,Expense
+Services,Revenue
+Staff Amenities,Expense
+Staff Training,Expense
+Staff recruitment,Expense
+Subcontractors,Direct Costs
+Subscriptions,Expense
+Superannuation,Expense
+Telephone & Internet,Expense
+Travel - International,Expense
+Travel - National,Expense
+Uniforms,Expense
+Wages and Salaries,Expense

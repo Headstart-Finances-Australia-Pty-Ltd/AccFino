@@ -1,7 +1,47 @@
-# AccFino - modular delivery
+# AccFino
 
-    AccFino/           application code only. Start here: AccFino/README.md
-    AccFino_Data/      ACCFINO_DATA_ROOT - persistent business data and documents (outside the package; Docker: mount at /data)
-    AccFino_Testing/   tests + test data, run per business domain:  python AccFino_Testing/run_tests.py <domain|core|all>
+Intelligent accounting for Australian businesses: books and ledger, bank reconciliation with AI classification, payroll, tax and investments (CGT), lending analysis, cash-flow forecasting, subscriptions and live bank feeds - **one app, one database, nine business modules** on a shared platform.
 
-Docs: AccFino/docs/architecture.md, development.md (build and test by domain), ui-design.md (navigation proposal).
+## What is in this package
+```
+backend/accfino/    core/ (platform) · shared/ (db, paths, llm, documents, contracts) · modules/<domain>/ · app.py (composition root)
+frontend/src/       core/ (shell, auth, settings, admin, registry) · modules/<domain>/
+deploy/             entrypoint.sh · data-seed/ (read-only first-run defaults) · windows/ · northflank.yml
+docs/               architecture.md · development.md · ui-design.md · platform/ · operations/ · history/
+Dockerfile · docker-compose.yml · .env.example · app.cmd (Windows double-click start)
+```
+**Application code only.** Business data and documents live in `../AccFino_Data` (`ACCFINO_DATA_ROOT`); tests and test data in `../AccFino_Testing`.
+
+## The modules
+| Module | What it does | Docs |
+|---|---|---|
+| accounting | ledger, sales/purchases, banking, expenses, assets, inventory, reports | [README](backend/accfino/modules/accounting/README.md) |
+| reconciliation | statement pipeline, ML/LLM/RDR classification, sessions, company directory | [README](backend/accfino/modules/reconciliation/README.md) |
+| cashflow | forecasting | [README](backend/accfino/modules/cashflow/README.md) |
+| trading | CGT (shares, crypto, property), tax-return data | [README](backend/accfino/modules/trading/README.md) |
+| lending | statement analysis for serviceability | [README](backend/accfino/modules/lending/README.md) |
+| payroll | employees, pay runs, payslips, PAYG/super, STP | [README](backend/accfino/modules/payroll/README.md) |
+| taxation | BAS/IAS, income tax returns, CGT, FBT, Division 7A, calendar, workpapers, audit (prepares and records; does not lodge with the ATO) | [README](backend/accfino/modules/taxation/README.md) · [docs](docs/taxation/README.md) |
+| billing | Square/Stripe subscription billing | [README](backend/accfino/modules/billing/README.md) |
+| open_banking | Basiq and OpenFeed (CDR) bank feeds | [README](backend/accfino/modules/open_banking/README.md) |
+
+## Run locally
+```bash
+cp .env.example .env                       # set DATABASE_URL (PostgreSQL), JWT_SECRET, ADMIN_PASSWORD, ACCFINO_DATA_ROOT
+cd backend && pip install -r requirements.txt
+export PYTHONPATH=. ACCFINO_DATA_ROOT=../../AccFino_Data
+python -m accfino.core.init_db
+python -m uvicorn accfino.app:app --host 127.0.0.1 --port 8001 --reload
+cd ../frontend && npm install && npm run dev        # http://localhost:3000 (proxies /api to :8001)
+```
+Windows: double-click `app.cmd` (stop: `deploy\windows\stop.cmd`). Docker: `docker compose up --build` (mounts `../AccFino_Data` at `/data`).
+PostgreSQL is required (the ledger's integrity triggers); the SQLite fallback of earlier versions does not exist.
+
+## Test
+`python ../AccFino_Testing/run_tests.py <domain|core|all>` - see [docs/development.md](docs/development.md).
+
+## Deploy
+Container via the root `Dockerfile`; **mount a persistent volume at `/data`** (`ACCFINO_DATA_ROOT=/data`), set `DATABASE_URL`, `JWT_SECRET`. Details: [docs/operations/DEPLOYMENT.md](docs/operations/DEPLOYMENT.md), service definition `deploy/northflank.yml`.
+
+## Read next
+[architecture](docs/architecture.md) · [developing and testing by domain](docs/development.md) · [UI design proposal](docs/ui-design.md) · [security](docs/platform/SECURITY.md) · [tenancy](docs/platform/TENANCY.md) · [subscriptions](docs/platform/SUBSCRIPTIONS.md)
