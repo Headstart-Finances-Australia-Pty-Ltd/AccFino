@@ -1,0 +1,10 @@
+// Public surface of the Planning frontend module: the ONLY import path other parts of the app may use.
+export { default as PlanningHome } from './pages/Home.jsx'
+export { default as ForecastTab } from './pages/ForecastTab.jsx'
+export { default as BudgetTab } from './pages/BudgetTab.jsx'
+export { default as ScenarioTab } from './pages/ScenarioTab.jsx'
+export { default as ReportsTab } from './pages/ReportsTab.jsx'
+export { default as InsightsTab } from './pages/InsightsTab.jsx'
+export { default as AssistantTab } from './pages/AssistantTab.jsx'
+export { default as RiskTab } from './pages/RiskTab.jsx'
+export { me as planningMe } from './lib/planningApi.js'

@@ -1,0 +1,11 @@
+// Public surface of the practice module: the ONLY file other code (the Practice hub, App routes) may import from it.
+export { default as ManagementTab } from './pages/ManagementTab.jsx'
+export { default as ClientsTab } from './pages/ClientsTab.jsx'
+export { default as WorkpapersTab } from './pages/WorkpapersTab.jsx'
+export { default as PortalTab } from './pages/PortalTab.jsx'
+export { default as EngagementsTab } from './pages/EngagementsTab.jsx'
+export { default as BillingTab } from './pages/BillingTab.jsx'
+export { default as NoPractice } from './pages/NoPractice.jsx'
+export { default as PortalApp, PortalAccept } from './pages/PortalApp.jsx'
+export { default as Gate } from './pages/Gate.jsx'
+export { useMe } from './lib/useMe.js'
