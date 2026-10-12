@@ -1,0 +1,10 @@
+// Public surface of the Lending frontend module: the ONLY import path other parts of the app may use.
+export { default as StatementTab } from './pages/StatementTab.jsx'
+export { default as CreditTab } from './pages/CreditTab.jsx'
+export { default as OriginationTab } from './pages/OriginationTab.jsx'
+export { default as LoansTab } from './pages/LoansTab.jsx'
+export { default as CollectionsTab } from './pages/CollectionsTab.jsx'
+export { default as TreasuryTab } from './pages/TreasuryTab.jsx'
+export { default as LendingOverview } from './pages/Overview.jsx'
+export { default as SmartLendingPage } from './pages/SmartLendingPage.jsx'
+export { me as lendingMe } from './lib/lendApi.js'
