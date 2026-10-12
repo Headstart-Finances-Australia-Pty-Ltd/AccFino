@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "note": "Australian payroll statutory parameters. This file is DATA, not code: edit (or add a new rule set with a later effective_from) when the ATO publishes new schedules; the engine picks the rule set whose effective_from <= pay date. Copied to ACCFINO_DATA_ROOT/reference/ on first run and never overwritten, so edits there survive upgrades.",
+  "rule_sets": [
+    {
+      "id": "2026-27",
+      "label": "Financial year 2026-27 (payments from 1 July 2026)",
+      "effective_from": "2026-07-01",
+      "effective_to": "2027-06-30",
+      "sources": {
+        "payg": {"title": "ATO Schedule 1 (NAT 1004) coefficients, published 17 June 2026", "verified": "primary", "verified_on": "2026-10-04"},
+        "study_loan": {"title": "ATO Schedule 8 (NAT 3539), applies from 1 July 2026", "verified": "primary", "verified_on": "2026-10-04"},
+        "bonus": {"title": "ATO Schedule 5 Method A (steps as published for 2025-26; confirm unchanged)", "verified": "primary-prior-year", "verified_on": "2026-10-04"},
+        "super": {"title": "ATO Payday Super / maximum contribution base 2026-27", "verified": "primary", "verified_on": "2026-10-04"},
+        "etp": {"title": "ATO key super rates (ETP cap, genuine redundancy limits) and Schedule 11 - figures cross-checked from secondary sources only", "verified": "secondary", "verified_on": "2026-10-04"},
+        "termination_leave": {"title": "ATO Schedule 7 - flat 32% for pre-18-Aug-1993 balances is NOT verified against the schedule text", "verified": "unverified", "verified_on": null}
+      },
+      "payg": {
+        "scales": {
+          "1": [[188, "0.1500", "0.1500"], [371, "0.2084", "11.0185"], [515, "0.1790", "0.1066"], [932, "0.3227", "74.1674"], [2246, "0.3200", "71.6508"], [3303, "0.3900", "228.8816"], [null, "0.4700", "493.1893"]],
+          "2": [[362, "0", "0"], [538, "0.1500", "54.3462"], [673, "0.2500", "108.2135"], [721, "0.1700", "54.3473"], [865, "0.1790", "60.8377"], [1282, "0.3227", "185.1935"], [2596, "0.3200", "181.7319"], [3653, "0.3900", "363.4627"], [null, "0.4700", "655.7704"]],
+          "3": [[2596, "0.3000", "0.3000"], [3653, "0.3700", "181.7308"], [null, "0.4500", "474.0385"]],
+          "5": [[362, "0", "0"], [721, "0.1500", "54.3462"], [865, "0.1590", "60.8365"], [1282, "0.3027", "185.1923"], [2596, "0.3000", "181.7308"], [3653, "0.3700", "363.4615"], [null, "0.4500", "655.7692"]],
+          "6": [[362, "0", "0"], [721, "0.1500", "54.3462"], [865, "0.1590", "60.8365"], [908, "0.3027", "185.1923"], [1135, "0.3527", "230.6135"], [1282, "0.3127", "185.1923"], [2596, "0.3100", "181.7308"], [3653, "0.3800", "363.4615"], [null, "0.4600", "655.7692"]]
+        },
+        "scale4_rates": {"resident": "0.4700", "foreign_resident": "0.4500"},
+        "offset_percent_of_claim": {"weekly": "0.019", "fortnightly": "0.038", "monthly": "0.083", "quarterly": "0.25"}
+      },
+      "study_loan": {
+        "tax_free_threshold_or_foreign": [[1337, "0", "0"], [2494, "0.15", "200.5615"], [3577, "0.17", "250.4527"], [null, "0.10", "0"]],
+        "no_tax_free_threshold": [[987, "0", "0"], [2144, "0.15", "148.0615"], [2727, "0.17", "190.9527"], [null, "0.10", "0"]]
+      },
+      "additional_payments": {"method_a_cap_rate": "0.47"},
+      "super": {
+        "sg_rate": "0.12",
+        "base": "qualifying_earnings",
+        "max_contribution_base_annual": "270830",
+        "due_business_days_after_payday": 7
+      },
+      "etp": {
+        "cap": "270000",
+        "preservation_age": 60,
+        "rate_at_or_over_preservation_age": "0.17",
+        "rate_under_preservation_age": "0.32",
+        "rate_over_cap": "0.47",
+        "genuine_redundancy_base": "13598",
+        "genuine_redundancy_per_year": "6801",
+        "note": "The whole-of-income cap is applied by the ATO at assessment, not by withholding."
+      },
+      "termination_leave": {"pre_1993_flat_rate": "0.32", "post_1993_method": "method_a"},
+      "leave_defaults": {"annual_hours_per_year_38h": "152", "personal_hours_per_year_38h": "76", "standard_week_hours": "38", "loading_percent": "17.5"}
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+# Local full stack: PostgreSQL + AccFino (API serving the built React UI)
+#   cp .env.example .env   # then edit
+#   docker compose up --build        ->  http://localhost:8001
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_USER: accfino, POSTGRES_PASSWORD: accfino, POSTGRES_DB: accfino }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U accfino"], interval: 5s, retries: 20 }
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://accfino:accfino@db:5432/accfino
+      PORT: "8001"
+      ACCFINO_DATA_ROOT: /data
+    ports: ["8001:8001"]
+    volumes: ["./../AccFino_Data:/data"]          # business data + documents, outside the application package
+    depends_on: { db: { condition: service_healthy } }
+volumes:
+  pgdata:
