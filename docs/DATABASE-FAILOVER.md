@@ -32,7 +32,7 @@ With no `DATABASE_STANDBY_URLS` nothing changes.
 
 | Situation | What the app does |
 |---|---|
-| Normal | Uses database 0. **Once a day** (`DB_STANDBY_SYNC_HOURS`) copies main → standby so the standby is warm (users, licences, companies, invoices, transactions …). |
+| Normal | Uses database 0. **Nothing is copied on a timer** (same as isift), so the standbys are never woken up needlessly. |
 | Main fails / out of quota | The next new connection goes to the standby and logs `DATABASE FAILOVER`. It tries once to copy main → standby (usually impossible when out of quota); the standby carries on with its last copy. |
 | On the standby | Every `DB_FAILBACK_MINUTES` (30) it checks whether the main works again. When it does: standby → main merge, switch back, second quick merge for rows written meanwhile. |
 | Restart while on a standby | It remembers (file `db_app/.db-active.json`) and starts on the standby. Or set `DATABASE_ACTIVE_INDEX=1`. |
@@ -49,7 +49,7 @@ admin and licences keep their original ids.
 **Honest limits**
 - Anything written to the main database *after the last copy* and *before* it
   failed is not on the standby until the main recovers and the two are merged.
-  A daily copy keeps that gap to about a day (`DB_STANDBY_SYNC_HOURS` lower = smaller gap).
+  If you want a standby kept warm, set `DB_STANDBY_SYNC_HOURS` (for example 24) or run `python -m db_app.sync_standby --from 0 --to 1` yourself; it is off by default.
 - Reconciliation **session files** (`main_app/data/<user>/…`) live on disk, not in
   Postgres, and are not part of the database copy. Mount a persistent volume
   (see `northflank.yml`) if you need them to survive redeploys.
@@ -61,7 +61,7 @@ admin and licences keep their original ids.
 |---|---|---|
 | `DATABASE_STANDBY_URLS` | – | Standby connection strings |
 | `DATABASE_ACTIVE_INDEX` | auto | Start on this database (0 = main) |
-| `DB_STANDBY_SYNC_HOURS` | 24 | Warm copy main → standby; `0` = never |
+| `DB_STANDBY_SYNC_HOURS` | 0 | Optional timed copy main → standby; `0` = off (isift behaviour) |
 | `DB_FAILBACK_MINUTES` | 30 | Main-recovered check while on a standby; `0` = never |
 | `DB_SYNC_SKIP_TABLES` | – | Comma list of tables to leave out of copies |
 | `DB_ADMIN_TOKEN` | – | Secret for the controls below (they are off without it) |
