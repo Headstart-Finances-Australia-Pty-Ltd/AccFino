@@ -2,9 +2,9 @@
 FROM node:20-slim AS frontend-build
 
 WORKDIR /build
-COPY frontend/package.json frontend/package-lock.json ./
+COPY react_frontend/package.json react_frontend/package-lock.json ./
 RUN npm ci --legacy-peer-deps
-COPY frontend/ ./
+COPY react_frontend/ ./
 RUN npm run build
 RUN test -f /build/dist/index.html || (echo "ERROR: Vite build failed" && exit 1)
 
@@ -31,10 +31,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # Remove dev/build artifacts
-RUN rm -rf frontend/node_modules frontend/src frontend/public
+RUN rm -rf react_frontend/node_modules react_frontend/src react_frontend/public
 
 # Copy built frontend from stage 1
-COPY --from=frontend-build /build/dist ./frontend/dist
+COPY --from=frontend-build /build/dist ./react_frontend/dist
 
 # Create required directories
 RUN mkdir -p main_app/data \
@@ -48,7 +48,7 @@ RUN test -f /app/db_app/models/company.py \
     || (echo "ERROR: company files missing" && exit 1)
 
 # Verify frontend built
-RUN test -f /app/frontend/dist/index.html \
+RUN test -f /app/react_frontend/dist/index.html \
     && echo "Frontend OK" \
     || (echo "ERROR: frontend dist missing" && exit 1)
 

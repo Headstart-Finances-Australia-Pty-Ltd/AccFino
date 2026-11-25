@@ -34,7 +34,7 @@ python -m db_app.init_db
 python -m uvicorn main_app.react_api:app --host 127.0.0.1 --port 8001 --reload
 
 # 2. Start React frontend (separate terminal)
-cd frontend
+cd react_frontend
 npm install
 npm run dev
 # → http://localhost:3000 (proxies /api → :8001 via vite.config.js)
@@ -98,7 +98,7 @@ accfino-main/
 │   └── database.py                     ← Postgres + SQLite fallback
 ├── main_app/
 │   └── react_api.py                    ← CORS + marketing route + /health
-└── frontend/
+└── react_frontend/
     └── public/
         └── index-marketing.html        ← new — AccFino marketing website
 ```

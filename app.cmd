@@ -32,9 +32,9 @@ if errorlevel 1 (
 )
 echo [OK] Python packages ready.
 
-if not exist "%~dp0frontend\node_modules" (
+if not exist "%~dp0react_frontend\node_modules" (
     echo Installing Node packages...
-    cd /d "%~dp0frontend"
+    cd /d "%~dp0react_frontend"
     call npm install
     cd /d "%~dp0"
 )
@@ -80,7 +80,7 @@ if errorlevel 1 (
 echo [OK] Main API ready.
 
 REM ── React UI ────────────────────────────────────────────────────
-start "AccFino UI :3000" cmd /k "cd /d "%AFROOT%\frontend" && npm run dev"
+start "AccFino UI :3000" cmd /k "cd /d "%AFROOT%\react_frontend" && npm run dev"
 
 echo [..] Waiting for UI...
 :wait3000
