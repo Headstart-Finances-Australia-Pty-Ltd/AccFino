@@ -1,0 +1,10 @@
+[
+  {
+    "bank_name": "CBA",
+    "account_number": "1",
+    "account_name": "t",
+    "files": [
+      "CBA_transaction_acc.csv"
+    ]
+  }
+]

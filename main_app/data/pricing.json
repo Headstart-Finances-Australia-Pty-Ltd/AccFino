@@ -1,0 +1,115 @@
+{
+    "base": {
+        "name": "Vault",
+        "description": "Free forever \u2014 CSV Reconciliation + Sales, Purchases, Customers & Suppliers",
+        "price_monthly": 0,
+        "price_yearly": 0,
+        "badge": "Free",
+        "highlight": false,
+        "category": "accounting",
+        "features": [
+            "Unlimited CSV reconciliation (1,000 txns/mo)",
+            "GL & GST auto-classification",
+            "Sales \u2014 Customers, Quotes & Tax Invoices",
+            "Purchases \u2014 Suppliers, POs, Bills & Receipts",
+            "Excel export"
+        ],
+        "modules": ["dashboard", "accounting", "reconciliation"],
+        "price_effective_from": "2026-06-27"
+    },
+    "accounting_pro": {
+        "name": "Accounting Pro",
+        "description": "Full accounting suite with Open Banking, Cash Flow & 20+ financial reports",
+        "price_monthly": 1900,
+        "price_yearly": 19000,
+        "badge": "Popular",
+        "highlight": true,
+        "category": "accounting",
+        "features": [
+            "Everything in Accounting Starter",
+            "Open Banking / direct bank feeds",
+            "Unlimited transactions",
+            "ML Cash Flow forecasting",
+            "20+ Financial Reports (P&L, Balance Sheet, BAS, Aged)"
+        ],
+        "modules": ["dashboard", "accounting", "reconciliation", "cash-flow"],
+        "price_effective_from": "2026-06-27"
+    },
+    "lending_basic": {
+        "name": "Smart Lending",
+        "description": "Australian responsible lending assessment \u2014 bank statement analysis, expense classification & lending metrics",
+        "price_monthly": 0,
+        "price_yearly": 0,
+        "badge": "New",
+        "highlight": false,
+        "category": "lending",
+        "features": [
+            "Upload PDF, image or CSV bank statements",
+            "AI transaction extraction (ANZ, CBA, Westpac, NAB)",
+            "2,400+ keyword expense classification",
+            "Mandatory vs Discretionary categorisation",
+            "NDI \u00b7 UMI \u00b7 DSR \u00b7 HEM lending metrics",
+            "ASIC RG 209 responsible lending assessment",
+            "Multi-statement upload & traceability gap detection",
+            "Max borrowing capacity calculation",
+            "APRA 3% serviceability buffer assessment"
+        ],
+        "modules": ["dashboard", "lending"],
+        "price_effective_from": "2026-06-27"
+    },
+    "taxation_complete": {
+        "name": "Taxation Complete",
+        "description": "Complete Australian tax \u2014 CGT (Crypto, Shares, Property) + full ITR data",
+        "price_monthly": 2500,
+        "price_yearly": 25000,
+        "badge": "",
+        "highlight": false,
+        "category": "trading",
+        "features": [
+            "Everything in Taxation Basic",
+            "Property CGT calculator",
+            "Tax Return Data \u2014 full ITR",
+            "All income, deductions & offsets",
+            "HELP/HECS repayment estimate"
+        ],
+        "modules": ["dashboard", "trading"],
+        "price_effective_from": "2026-06-27"
+    },
+    "payroll_business": {
+        "name": "Payroll Business",
+        "description": "Full Australian payroll with STP Phase 2, unlimited employees & ATO compliance",
+        "price_monthly": 3900,
+        "price_yearly": 39000,
+        "badge": "Popular",
+        "highlight": true,
+        "category": "payroll",
+        "features": [
+            "Everything in Payroll Essential",
+            "Unlimited employees",
+            "STP Phase 2 / ATO filing",
+            "Annual payment summaries",
+            "Priority support"
+        ],
+        "modules": ["dashboard", "payroll"],
+        "price_effective_from": "2026-06-27"
+    },
+    "premium": {
+        "name": "Ultra Plan",
+        "description": "All modules \u2014 Accounting, Taxation & Payroll + Smart Lending \u2014 best value complete suite",
+        "price_monthly": 6900,
+        "price_yearly": 69000,
+        "badge": "Best Value",
+        "highlight": true,
+        "category": "bundle",
+        "features": [
+            "Everything in Accounting Pro",
+            "Everything in Taxation Complete",
+            "Full Payroll Business",
+            "Smart Lending included",
+            "Open Banking included",
+            "Priority support + early access features"
+        ],
+        "modules": ["dashboard", "accounting", "reconciliation", "trading", "cash-flow", "payroll", "lending"],
+        "price_effective_from": "2026-06-27"
+    }
+}

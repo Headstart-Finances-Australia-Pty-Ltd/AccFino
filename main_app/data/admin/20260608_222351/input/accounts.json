@@ -1,0 +1,19 @@
+[
+  {
+    "bank_name": "CBA",
+    "account_number": "1",
+    "account_name": "t",
+    "files": [
+      "CBA_transaction_acc.csv"
+    ]
+  },
+  {
+    "bank_name": "Macquarie",
+    "account_number": "1",
+    "account_name": "tr",
+    "files": [
+      "Macquarie_transaction_acc.csv",
+      "Maquarie_saving_acc.csv"
+    ]
+  }
+]
