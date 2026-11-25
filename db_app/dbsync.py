@@ -1,14 +1,14 @@
 """Moving data between the main database (DATABASE_URL = number 0) and the
 standby databases (DATABASE_STANDBY_URLS = numbers 1, 2, ...).
 
-  1. WARM COPY (main -> every standby): once every DB_STANDBY_SYNC_HOURS
-     (default 24; 0 = off) while the main database is the active one, so a standby
-     already holds users, licences, companies, invoices, transactions ... when it
-     is needed. It is a MERGE, cheap when little changed.
-  2. FAILOVER (database.py): the app moves from A to B. We try once to copy A -> B.
+  Same logic as isift: nothing is copied on a timer by default. A copy happens
+  only in two situations (1 and 2 below). An optional timed warm copy
+  (DB_STANDBY_SYNC_HOURS, default 0 = off) exists but is NOT used unless you set it.
+
+  1. FAILOVER (database.py): the app moves from A to B. We try once to copy A -> B.
      A database that is out of quota usually cannot be read, in which case B simply
      carries on with the data it already has.
-  3. FAIL-BACK (loop below): while a standby is in use, the main database is tried
+  2. FAIL-BACK (loop below): while a standby is in use, the main database is tried
      every DB_FAILBACK_MINUTES (default 30; 0 = off). When it accepts connections
      again, the standby is merged into it, the app switches back, and a second quick
      pass catches rows written meanwhile.
@@ -371,13 +371,13 @@ def start():
     if failback_min > 0:
         _loop(failback_min * 60, lambda: failback_once() if D.failover.active != 0 else None, "db-failback")
 
-    # Keeping a standby warm wakes both databases for a few minutes, so it is deliberately infrequent.
-    warm_h = float(os.environ.get("DB_STANDBY_SYNC_HOURS", "24"))
+    # Optional and OFF by default (isift has no timed copy): it would wake the main and standby databases and use CU.
+    warm_h = float(os.environ.get("DB_STANDBY_SYNC_HOURS", "0"))
     if warm_h > 0:
         _loop(warm_h * 3600, warm_standbys, "db-warm-sync", first_delay_s=15 * 60)
 
     if D.failover.enabled:
         log.warning(
-            "Database failover on: %d databases, active #%d; standby sync every %s h, fail-back check every %s min",
-            D.failover.count, D.failover.active, warm_h or "never", failback_min or "never",
+            "Database failover on: %d databases, active #%d; timed standby copy: %s, fail-back check every %s min",
+            D.failover.count, D.failover.active, (f"every {warm_h:g} h" if warm_h else "off"), (f"{failback_min:g}" if failback_min else "never"),
         )
