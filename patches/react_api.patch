@@ -1,0 +1,58 @@
+--- a/main_app/react_api.py
++++ b/main_app/react_api.py
+@@ -481,6 +481,13 @@
+ 
+     _threading.Thread(target=_bg_init, daemon=True, name="startup-db-init").start()
+ 
++    # Standby-database failover / fail-back loops (slow; no-ops unless DATABASE_STANDBY_URLS is set).
++    try:
++        from db_app import dbsync as _dbsync
++        _dbsync.start()
++    except Exception as _e:
++        logger.warning(f"startup: dbsync not started: {_e}")
++
+ 
+ @app.post("/auth/reset-admin", include_in_schema=False)
+ def reset_admin_password(secret: str = Body(...)):
+@@ -816,9 +823,28 @@
+ 
+ 
+ @app.get("/health", include_in_schema=False)
+-def health_check():
+-    """Simple liveness probe - returns 200 if the API process is running."""
+-    return {"status": "ok", "service": "accfino-api"}
++def health_check(deep: int = 0):
++    """Liveness probe. Plain /health never touches the database (so an uptime monitor can't
++    keep Neon awake); /health?deep=1 also runs SELECT 1 and reports which database is active."""
++    from db_app.database import failover as _fo
++    body = {"status": "ok", "service": "accfino-api", "database_checked": False,
++            "failover": {"active": _fo.active, "count": _fo.count}}
++    if deep:
++        from sqlalchemy import text as _text
++        from db_app.database import engine as _eng
++        body["database_checked"] = True
++        try:
++            with _eng.connect() as _c:
++                _c.execute(_text("SELECT 1"))
++            body["database"] = "ok"
++        except Exception:
++            body["database"] = "unavailable"
++            body["status"] = "degraded"
++        body["failover"] = {"active": _fo.active, "count": _fo.count}
++        if body["status"] != "ok":
++            from fastapi.responses import JSONResponse
++            return JSONResponse(body, status_code=503)
++    return body
+ 
+ 
+ 
+@@ -828,6 +854,9 @@
+ app.include_router(db_password_reset.router, prefix="/auth",         tags=["auth"])
+ app.include_router(db_payments.router,       prefix="/payments",     tags=["payments"])
+ 
++from db_app.api import db_failover as db_failover_api
++app.include_router(db_failover_api.router,   prefix="/db-failover",  tags=["db-failover"])
++
+ # ── Accounting module ──────────────────────────────────────────────────────────
+ try:
+     from db_app.api.accounting import router as _accounting_router

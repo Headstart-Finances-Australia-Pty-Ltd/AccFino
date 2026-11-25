@@ -1,13 +1,16 @@
-AccFino update pack - copy these over your repo (same paths, overwrite):
+AccFino update pack v2
 
-  db_app/database.py            (rewritten: failover + connection naming)
-  db_app/dbsync.py              (new)  data copy / fail-back engine
-  db_app/sync_standby.py        (new)  command-line copy tool
-  db_app/api/db_failover.py     (new)  token-protected status/sync/switch routes
-  main_app/react_api.py         (health?deep=1, failover router, starts the sync loops)
-  entrypoint.sh                 (names each process in Postgres: accfino-init/-auth/-api)
-  northflank.yml                (new optional env vars)
-  docs/DATABASE-FAILOVER.md     (new)  setup, behaviour, and "why is Neon busy?" diagnostics
+1) Copy these over your repo (same paths):
+     db_app/database.py, db_app/dbsync.py, db_app/sync_standby.py
+     db_app/api/db_failover.py
+     entrypoint.sh     <- FIXES the restart loop: the auth API step is now optional
+     docs/DATABASE-FAILOVER.md
 
-Nothing to delete. To enable the standby: see docs/DATABASE-FAILOVER.md
-(set DATABASE_STANDBY_URLS + DB_ADMIN_TOKEN, then: python -m db_app.sync_standby --from 0 --to 1).
+2) main_app/react_api.py: do NOT overwrite your file with an old copy.
+   If you already copied the previous pack's react_api.py or northflank.yml over
+   your repo, restore your own versions from git first (git checkout -- main_app/react_api.py northflank.yml), then:
+       patch -p1 < patches/react_api.patch
+   (or make the 3 small edits by hand - the patch shows them: health?deep=1,
+    the /db-failover router include, and dbsync.start() in the startup hook).
+
+northflank.yml is not needed: just add DATABASE_STANDBY_URLS and DB_ADMIN_TOKEN in the Northflank dashboard.

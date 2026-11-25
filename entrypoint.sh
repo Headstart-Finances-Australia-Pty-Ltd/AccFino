@@ -34,21 +34,27 @@ if [ $? -ne 0 ]; then
 fi
 echo "[accfino] Database ready"
 
-# ── Start internal auth API on 127.0.0.1:8000 (background) ───────────────────
-echo "[accfino] Starting auth API on 127.0.0.1:8000..."
-ACCFINO_APP_NAME=accfino-auth python -m uvicorn main_app.api_call:app \
-    --host 127.0.0.1 \
-    --port 8000 \
-    --log-level warning &
-
-AUTH_PID=$!
-sleep 3
-
-if ! kill -0 $AUTH_PID 2>/dev/null; then
-    echo "[accfino] ERROR: Auth API failed to start"
-    exit 1
+# ── Start internal auth API on 127.0.0.1:8000 (background, OPTIONAL) ─────────
+# Nothing in the main API depends on this process, so if it is missing (newer
+# versions of the project may not ship main_app/api_call.py) or fails to start,
+# warn and carry on. Exiting here would make the platform restart the container
+# in a loop - and every restart wakes the database (burning Neon CU hours).
+if [ -f /app/main_app/api_call.py ]; then
+    echo "[accfino] Starting auth API on 127.0.0.1:8000..."
+    ACCFINO_APP_NAME=accfino-auth python -m uvicorn main_app.api_call:app \
+        --host 127.0.0.1 \
+        --port 8000 \
+        --log-level warning &
+    AUTH_PID=$!
+    sleep 3
+    if kill -0 $AUTH_PID 2>/dev/null; then
+        echo "[accfino] Auth API ready (PID $AUTH_PID)"
+    else
+        echo "[accfino] WARNING: Auth API failed to start - continuing without it"
+    fi
+else
+    echo "[accfino] Auth API module not present - skipping (not required)"
 fi
-echo "[accfino] Auth API ready (PID $AUTH_PID)"
 
 # ── Start main API on $PORT (foreground) ─────────────────────────────────────
 # Northflank injects $PORT — fall back to 8001 if not set
