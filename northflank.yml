@@ -33,6 +33,12 @@ services:
       - name: PORT
         value: "8001"
 
+      # ── Database failover (optional, see docs/DATABASE-FAILOVER.md) ───────
+      - name: DATABASE_STANDBY_URLS
+        value: ""                 # backup Postgres/Neon connection string(s), comma separated
+      - name: DB_ADMIN_TOKEN
+        value: ""                 # secret for /api/db-failover/* (controls are off without it)
+
       - name: CORS_ORIGINS
         value: ""                 # Add your Northflank app domain if needed
         # Example: https://accfino--accfino-app.code.run

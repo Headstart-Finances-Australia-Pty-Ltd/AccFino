@@ -27,17 +27,28 @@ mkdir -p /app/main_app/backend/cash_flow/outputs/plots
 
 # ── Initialise database schema ────────────────────────────────────────────────
 echo "[accfino] Initialising database schema..."
-python -m db_app.init_db
+ACCFINO_APP_NAME=accfino-init python -m db_app.init_db
 if [ $? -ne 0 ]; then
     echo "[accfino] ERROR: DB init failed — check DATABASE_URL and Postgres connectivity"
     exit 1
 fi
 echo "[accfino] Database ready"
 
-# ── Internal auth API: removed ───────────────────────────────────────────────
-# `main_app.api_call` no longer exists at that path (the file now sits in main_app/data/), and the main
-# app already serves every /auth route itself (react_api includes the auth router). Starting the separate
-# background service on 127.0.0.1:8000 made this script exit before the app came up. Nothing else uses port 8000.
+# ── Start internal auth API on 127.0.0.1:8000 (background) ───────────────────
+echo "[accfino] Starting auth API on 127.0.0.1:8000..."
+ACCFINO_APP_NAME=accfino-auth python -m uvicorn main_app.api_call:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --log-level warning &
+
+AUTH_PID=$!
+sleep 3
+
+if ! kill -0 $AUTH_PID 2>/dev/null; then
+    echo "[accfino] ERROR: Auth API failed to start"
+    exit 1
+fi
+echo "[accfino] Auth API ready (PID $AUTH_PID)"
 
 # ── Start main API on $PORT (foreground) ─────────────────────────────────────
 # Northflank injects $PORT — fall back to 8001 if not set
@@ -46,7 +57,7 @@ APP_PORT=${PORT:-8001}
 echo "[accfino] Starting main API on 0.0.0.0:${APP_PORT}..."
 echo "[accfino] Note: ML models take 30-90s to load — /ready returns 503 until done"
 
-exec python -m uvicorn main_app.react_api:app \
+exec env ACCFINO_APP_NAME=accfino-api python -m uvicorn main_app.react_api:app \
     --host 0.0.0.0 \
     --port "${APP_PORT}" \
     --workers 1 \

@@ -1,0 +1,13 @@
+AccFino update pack - copy these over your repo (same paths, overwrite):
+
+  db_app/database.py            (rewritten: failover + connection naming)
+  db_app/dbsync.py              (new)  data copy / fail-back engine
+  db_app/sync_standby.py        (new)  command-line copy tool
+  db_app/api/db_failover.py     (new)  token-protected status/sync/switch routes
+  main_app/react_api.py         (health?deep=1, failover router, starts the sync loops)
+  entrypoint.sh                 (names each process in Postgres: accfino-init/-auth/-api)
+  northflank.yml                (new optional env vars)
+  docs/DATABASE-FAILOVER.md     (new)  setup, behaviour, and "why is Neon busy?" diagnostics
+
+Nothing to delete. To enable the standby: see docs/DATABASE-FAILOVER.md
+(set DATABASE_STANDBY_URLS + DB_ADMIN_TOKEN, then: python -m db_app.sync_standby --from 0 --to 1).

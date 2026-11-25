@@ -52,9 +52,6 @@ from db_app.api import transactions as db_transactions
 from db_app.api import invoice as db_invoice
 from db_app.api import password_reset as db_password_reset
 from db_app.api import payments as db_payments
-from db_app.api import groq_pool as db_groq_pool
-from db_app.api import db_browser as db_db_browser
-from db_app.api import reports as db_reports
 from db_app.models.licence import LicenceRecord
 from db_app.models.password_reset_token import PasswordResetToken
 
@@ -92,27 +89,7 @@ from backend.classifier.engine import classify as _engine_classify, warm as _eng
 
 # -- COA name/type lookup - built once at startup ------------------------------
 def _load_coa_names(path=None) -> tuple:
-    """Return (sorted *Name list, {name: type} dict). Postgres
-    (chart_of_accounts table) is authoritative; falls back to reading
-    ChartOfAccounts.csv directly if the DB isn't reachable yet (e.g. this
-    runs at import time, before the startup migration thread has
-    necessarily created the table on a brand-new database)."""
-    if path is None:
-        try:
-            from db_app.database import SessionLocal
-            from db_app.models.app_data import ChartOfAccount
-            db = SessionLocal()
-            try:
-                rows = db.query(ChartOfAccount).order_by(ChartOfAccount.name).all()
-                if rows:
-                    names = [r.name for r in rows]
-                    name_to_type = {r.name: (r.type or "") for r in rows}
-                    return sorted(names), name_to_type
-            finally:
-                db.close()
-        except Exception:
-            pass  # DB not ready yet -- fall through to CSV
-
+    """Return (sorted *Name list, {name: type} dict) from ChartOfAccounts.csv."""
     import csv
     from backend.classifier.engine import DEFAULT_COA_PATH
     names, name_to_type = [], {}
@@ -500,45 +477,16 @@ async def _on_startup():
             _mpr(_db_engine)
         except Exception as _e:
             logger.warning(f"startup: payroll migration skipped: {_e}")
-        try:
-            from db_app.migrations.restructure_rdr_rules import run as _mrdr
-            from db_app.database import engine as _db_engine
-            _mrdr(_db_engine)
-        except Exception as _e:
-            logger.warning(f"startup: rdr_rules migration skipped: {_e}")
-        try:
-            from db_app.migrations.create_groq_key_pool import run as _mgkp
-            from db_app.database import engine as _db_engine
-            _mgkp(_db_engine)
-        except Exception as _e:
-            logger.warning(f"startup: groq_key_pool migration skipped: {_e}")
-        try:
-            from db_app.migrations.create_reconciliation_sessions import run as _mrs
-            from db_app.database import engine as _db_engine
-            _mrs(_db_engine)
-        except Exception as _e:
-            logger.warning(f"startup: reconciliation_sessions migration skipped: {_e}")
-        try:
-            from db_app.migrations.create_coa_kb_pricing_lending import run as _mckpl
-            from db_app.database import engine as _db_engine
-            _mckpl(_db_engine)
-        except Exception as _e:
-            logger.warning(f"startup: coa/kb/pricing/lending migration skipped: {_e}")
-        try:
-            from db_app.migrations.restructure_pricing_plans import run as _mpp
-            from db_app.database import engine as _db_engine
-            _mpp(_db_engine)
-        except Exception as _e:
-            logger.warning(f"startup: pricing_plans restructure migration skipped: {_e}")
-        try:
-            from db_app.migrations.create_classifier_cache import run as _mcc
-            from db_app.database import engine as _db_engine
-            _mcc(_db_engine)
-        except Exception as _e:
-            logger.warning(f"startup: classifier_cache migration skipped: {_e}")
         logger.info("startup: background DB init complete")
 
     _threading.Thread(target=_bg_init, daemon=True, name="startup-db-init").start()
+
+    # Standby-database failover / fail-back loops (slow; no-ops unless DATABASE_STANDBY_URLS is set).
+    try:
+        from db_app import dbsync as _dbsync
+        _dbsync.start()
+    except Exception as _e:
+        logger.warning(f"startup: dbsync not started: {_e}")
 
 
 @app.post("/auth/reset-admin", include_in_schema=False)
@@ -843,7 +791,14 @@ async def _reconcile_process_with_session_impl(
         for (bank, account), tuples in _acc_files.items()
     ]
     try:
-        session_manager.save_input_meta_and_files(uname, sid, accounts_meta, _all_saved)
+        input_dir = session_manager.get_session_dir(uname, sid) / "input"
+        input_dir.mkdir(parents=True, exist_ok=True)
+        (input_dir / "accounts.json").write_text(
+            _json.dumps(accounts_meta, indent=2), encoding="utf-8")
+        files_dir = input_dir / "files"
+        files_dir.mkdir(exist_ok=True)
+        for fname, raw in _all_saved.items():
+            (files_dir / fname).write_bytes(raw)
     except Exception as _e:
         logger.warning(f"Failed to save session input for {sid}: {_e}")
 
@@ -868,9 +823,28 @@ async def shutdown():
 
 
 @app.get("/health", include_in_schema=False)
-def health_check():
-    """Simple liveness probe - returns 200 if the API process is running."""
-    return {"status": "ok", "service": "accfino-api"}
+def health_check(deep: int = 0):
+    """Liveness probe. Plain /health never touches the database (so an uptime monitor can't
+    keep Neon awake); /health?deep=1 also runs SELECT 1 and reports which database is active."""
+    from db_app.database import failover as _fo
+    body = {"status": "ok", "service": "accfino-api", "database_checked": False,
+            "failover": {"active": _fo.active, "count": _fo.count}}
+    if deep:
+        from sqlalchemy import text as _text
+        from db_app.database import engine as _eng
+        body["database_checked"] = True
+        try:
+            with _eng.connect() as _c:
+                _c.execute(_text("SELECT 1"))
+            body["database"] = "ok"
+        except Exception:
+            body["database"] = "unavailable"
+            body["status"] = "degraded"
+        body["failover"] = {"active": _fo.active, "count": _fo.count}
+        if body["status"] != "ok":
+            from fastapi.responses import JSONResponse
+            return JSONResponse(body, status_code=503)
+    return body
 
 
 
@@ -879,9 +853,9 @@ app.include_router(db_transactions.router,   prefix="/transactions", tags=["tran
 app.include_router(db_invoice.router,        prefix="/invoice",      tags=["invoice"])
 app.include_router(db_password_reset.router, prefix="/auth",         tags=["auth"])
 app.include_router(db_payments.router,       prefix="/payments",     tags=["payments"])
-app.include_router(db_groq_pool.router,      prefix="/groq-pool",    tags=["groq-pool"])
-app.include_router(db_db_browser.router,     prefix="/db-browser",   tags=["db-browser"])
-app.include_router(db_reports.router,        prefix="/reports",      tags=["reports"])
+
+from db_app.api import db_failover as db_failover_api
+app.include_router(db_failover_api.router,   prefix="/db-failover",  tags=["db-failover"])
 
 # ── Accounting module ──────────────────────────────────────────────────────────
 try:
@@ -1373,40 +1347,11 @@ async def upload_gl_accounts(file: UploadFile = File(...)):
             try: tmp_path.unlink()
             except: pass
 
-    # Step 3: push into Postgres (authoritative store) then re-sync the
-    # canonical CSV from it, so the file the engine reads always matches
-    # the DB exactly. Skipped in the rare Windows-file-locked fallback
-    # case (saved_path != coa_path) -- that degraded path is left exactly
-    # as before, since regenerating the canonical file there would
-    # overwrite a different, currently-inaccessible file.
-    if saved_path == coa_path:
-        try:
-            import csv as _csv_mod
-            from db_app.database import SessionLocal as _SL_coa
-            from db_app.models.app_data import ChartOfAccount as _COA
-            from backend.utils.db_sync import sync_coa_csv_from_db as _sync_coa
-
-            db = _SL_coa()
-            try:
-                db.query(_COA).delete()
-                with open(saved_path, newline="", encoding="utf-8-sig") as f:
-                    for row in _csv_mod.DictReader(f):
-                        name = (row.get("*Name") or row.get("Name") or "").strip()
-                        atype = (row.get("*Type") or row.get("Type") or "").strip()
-                        if name:
-                            db.add(_COA(name=name, type=atype))
-                db.commit()
-            finally:
-                db.close()
-            _sync_coa()  # regenerate the canonical CSV from the DB, now the source of truth
-        except Exception as _e:
-            logger.warning(f"COA Postgres sync skipped: {_e}")
-
-    # Step 4: rebuild engine index from saved file
+    # Step 3: rebuild engine index from saved file
     _engine_evict()
     _engine_warm_path(coa_path=saved_path)
 
-    # Step 5: reload name/type map
+    # Step 4: reload name/type map
     global _COA_NAMES, _COA_NAME_TO_TYPE, _ACTIVE_COA_PATH
     _COA_NAMES, _COA_NAME_TO_TYPE = _load_coa_names(saved_path)
     _ACTIVE_COA_PATH = saved_path
@@ -1586,16 +1531,53 @@ def list_sessions(username: str):
     for s in ss:
         if "datetime" in s and hasattr(s["datetime"], "isoformat"):
             s["datetime"] = s["datetime"].isoformat()
-        # accounts_meta/file counts now come straight from the DB row and
-        # its session_files relationship -- always in sync by construction,
-        # so there's no repair/backfill step needed anymore (the old
-        # version re-derived this from accounts.json + a directory scan
-        # specifically to work around cases where the two could drift).
+        # Enrich with accounts/file count from accounts.json.
+        # Falls back to counting files from input/files/ on disk when the
+        # accounts.json "files" arrays are empty (e.g. backfilled sessions).
         try:
-            summary = session_manager.get_session_summary(username, s["session_id"])
-            s["accounts_meta"] = summary["accounts_meta"]
-            s["account_count"] = summary["account_count"]
-            s["file_count"] = summary["file_count"]
+            import json as _json
+            sess_dir  = session_manager.get_session_dir(username, s["session_id"])
+            acc_file  = sess_dir / "input" / "accounts.json"
+            files_dir = sess_dir / "input" / "files"
+
+            if acc_file.exists():
+                accs = _json.loads(acc_file.read_text())
+
+                # Recover filenames from disk when files arrays are all empty
+                disk_names = (
+                    sorted(f.name for f in files_dir.iterdir() if f.is_file())
+                    if files_dir.exists() else []
+                )
+                if disk_names and all(len(a.get("files", [])) == 0 for a in accs):
+                    n_acc   = len(accs)
+                    n_files = len(disk_names)
+                    if n_acc > 0 and n_files >= n_acc:
+                        chunk = n_files // n_acc
+                        for idx, a in enumerate(accs):
+                            start = idx * chunk
+                            end   = start + chunk if idx < n_acc - 1 else n_files
+                            a["files"] = disk_names[start:end]
+                    else:
+                        for a in accs:
+                            a["files"] = disk_names
+                    # Persist repaired data so this only runs once
+                    try:
+                        acc_file.write_text(_json.dumps(accs, indent=2), encoding="utf-8")
+                    except Exception:
+                        pass
+
+                s["accounts_meta"] = accs
+                s["account_count"] = len(accs)
+                s["file_count"]    = sum(len(a.get("files", [])) for a in accs)
+            else:
+                # No accounts.json - fall back to disk file count
+                disk_count = (
+                    sum(1 for f in files_dir.iterdir() if f.is_file())
+                    if files_dir.exists() else 0
+                )
+                s["accounts_meta"] = []
+                s["account_count"] = 0
+                s["file_count"]    = disk_count
         except Exception:
             s["accounts_meta"] = []; s["account_count"] = 0; s["file_count"] = 0
     return ss
@@ -1920,7 +1902,16 @@ async def reconcile_process(
     ]
 
     try:
-        session_manager.save_input_meta_and_files(username, sid, accounts_meta, _saved_files)
+        input_dir = session_manager.get_session_dir(username, sid) / "input"
+        input_dir.mkdir(parents=True, exist_ok=True)
+        (input_dir / "accounts.json").write_text(
+            _json.dumps(accounts_meta, indent=2), encoding="utf-8"
+        )
+        # Save raw CSV files so session can be re-run later
+        files_dir = input_dir / "files"
+        files_dir.mkdir(exist_ok=True)
+        for fname, raw in _saved_files.items():
+            (files_dir / fname).write_bytes(raw)
     except Exception as _e:
         logger.warning(f"Failed to save session input for {sid}: {_e}")
 
@@ -2483,14 +2474,7 @@ def cf_predict(run_id: str, model_name: str=Body(..., embed=True)):
 # ------------------------------------------------------------------------------
 # ML CLASSIFIER
 # ------------------------------------------------------------------------------
-SAMPLE_CSV = ("date,description,amount,category,gst_category\n"
-    "15/09/2025,BUNNINGS,65.38,Expense,GST on Expenses\n"
-    "22/09/2025,OFFICEWORKS,42.10,Expense,GST on Expenses\n"
-    "16/08/2025,CLIENT PAYMENT ABC PTY,339.55,Revenue,GST on Income\n"
-    "20/08/2025,CLIENT PAYMENT XYZ PTY,512.00,Revenue,GST on Income\n"
-    "19/08/2025,AMAZON,97.98,Expense,GST on Expenses\n"
-    "1/10/2025,SUPPLIER DIRECT COST,566.31,Direct Costs,GST on Expenses\n"
-    "3/10/2025,SUPPLIER RAW MATERIALS,289.40,Direct Costs,GST on Expenses\n")
+SAMPLE_CSV = "date,description,amount,category,gst_category\n15/09/2025,BUNNINGS,65.38,Expense,GST on Expenses\n16/08/2025,CLIENT PAYMENT ABC PTY,339.55,Revenue,GST on Income\n19/08/2025,AMAZON,97.98,Expense,GST on Expenses\n1/10/2025,SUPPLIER DIRECT COST,566.31,Direct Costs,GST on Expenses\n"
 
 @app.get("/ml/status")
 def ml_status():
@@ -2515,93 +2499,85 @@ async def ml_train(file: UploadFile=File(...)):
         if col not in df.columns: errors.append(f"Missing: '{col}'")
     if errors: raise HTTPException(400, "\n".join(errors))
     try: result = train_from_df(df, model_dir=str(DEFAULT_MODEL_DIR))
-    except ValueError as e: raise HTTPException(400, str(e))
     except Exception as e: raise HTTPException(500, f"Training failed: {e}")
     return {"ok": True, "rows_used": result.get("rows_used", len(df)),
             "category_accuracy": result.get("category_accuracy"),
             "gst_accuracy": result.get("gst_accuracy"),
-            "warning": result.get("warning"),
             "message": "Models saved. Auto-classify will use them immediately."}
 
 
 # ------------------------------------------------------------------------------
-# RDR RULES  (Postgres-backed -- see db_app/models/rdr_rule.py)
+# RDR RULES  (uses EXACT same structure as transaction_classify.py)
 # ------------------------------------------------------------------------------
-from fastapi import Depends as _Depends
-from sqlalchemy.orm import Session as _Session
-from db_app.database import get_db as _rdr_get_db
-from db_app.models.rdr_rule import RDRRule
+RDR_PATH = ROOT / "data" / "rdr_rules.json"
 
 @app.get("/coa/accounts")
-def coa_accounts(db: _Session = _Depends(_rdr_get_db)):
-    """Return all GL account names + types from the chart_of_accounts table
-    for RDR rule creation."""
-    from db_app.models.app_data import ChartOfAccount
+def coa_accounts():
+    """Return all GL account names + types from active COA for RDR rule creation."""
     try:
-        rows = db.query(ChartOfAccount).order_by(ChartOfAccount.name).all()
-        return [{"name": r.name, "type": r.type or ""} for r in rows]
-    except Exception:
+        import csv as _csv
+        coa_path = _ACTIVE_COA_PATH if '_ACTIVE_COA_PATH' in dir() else ROOT / "data" / "ChartOfAccounts.csv"
+        rows = []
+        with open(coa_path, encoding="utf-8-sig", newline="") as f:
+            for r in _csv.DictReader(f):
+                name = (r.get("*Name") or r.get("Name") or "").strip()
+                atype = (r.get("*Type") or r.get("Type") or "").strip()
+                if name:
+                    rows.append({"name": name, "type": atype})
+        return rows
+    except Exception as e:
         return []
 
+def _load_rdr():
+    return json.loads(RDR_PATH.read_text("utf-8")) if RDR_PATH.exists() else []
+
+def _save_rdr(rules):
+    RDR_PATH.write_text(json.dumps(rules, indent=2, ensure_ascii=False), "utf-8")
+
 @app.get("/rdr/rules")
-def rdr_list(db: _Session = _Depends(_rdr_get_db)):
-    rules = db.query(RDRRule).order_by(RDRRule.priority.desc()).all()
-    return [r.to_dict() for r in rules]
+def rdr_list(): return _load_rdr()
 
 @app.post("/rdr/rules")
-def rdr_create(rule: dict = Body(...), db: _Session = _Depends(_rdr_get_db)):
-    rule_id = rule.get("id") or f"rule_{int(datetime.now().timestamp()*1000)}"
-    entry = RDRRule(
-        id=rule_id,
-        name=rule.get("name"),
-        priority=int(rule.get("priority", 100) or 100),
-        then=rule.get("then"),
-        then_gst_category=rule.get("then_gst_category"),
-    )
-    entry.set_condition(rule.get("if", {}))
-    db.add(entry)
-    db.commit()
-    db.refresh(entry)
-    return entry.to_dict()
+def rdr_create(rule: dict=Body(...)):
+    rules = _load_rdr()
+    rule.setdefault("id", f"rule_{int(datetime.now().timestamp()*1000)}")
+    # Ensure correct field names matching transaction_classify.py
+    # "then" = GL account string, "then_gst_category" = GST string
+    rules.append(rule); _save_rdr(rules)
+    return rule
 
 @app.put("/rdr/rules/{rule_id}")
-def rdr_update(rule_id: str, rule: dict = Body(...), db: _Session = _Depends(_rdr_get_db)):
-    entry = db.get(RDRRule, rule_id)
-    if not entry:
-        raise HTTPException(404, "Rule not found")
-    if "name" in rule: entry.name = rule["name"]
-    if "priority" in rule: entry.priority = int(rule["priority"] or 100)
-    if "if" in rule: entry.set_condition(rule["if"])
-    if "then" in rule: entry.then = rule["then"]
-    if "then_gst_category" in rule: entry.then_gst_category = rule["then_gst_category"]
-    db.commit()
-    db.refresh(entry)
-    return entry.to_dict()
+def rdr_update(rule_id: str, rule: dict=Body(...)):
+    rules = _load_rdr()
+    for i, r in enumerate(rules):
+        if r.get("id") == rule_id:
+            rules[i] = {**r, **rule, "id": rule_id}
+            _save_rdr(rules)
+            return rules[i]
+    raise HTTPException(404, "Rule not found")
 
 @app.delete("/rdr/rules/{rule_id}")
-def rdr_delete(rule_id: str, db: _Session = _Depends(_rdr_get_db)):
-    entry = db.get(RDRRule, rule_id)
-    if entry:
-        db.delete(entry)
-        db.commit()
+def rdr_delete(rule_id: str):
+    rules = [r for r in _load_rdr() if r.get("id") != rule_id]
+    _save_rdr(rules)
     return {"ok": True}
 
 @app.post("/rdr/test")
-def rdr_test(body: dict = Body(...), db: _Session = _Depends(_rdr_get_db)):
+def rdr_test(body: dict=Body(...)):
     import re
     desc   = str(body.get("description", ""))
     debit  = float(body.get("debit", 0) or 0)
     credit = float(body.get("credit", 0) or 0)
     d      = desc.lower()
-    rules = db.query(RDRRule).order_by(RDRRule.priority.desc()).all()
-    for rule in rules:
-        if rule.debit_gt is not None and not debit > rule.debit_gt: continue
-        if rule.credit_gt is not None and not credit > rule.credit_gt: continue
-        if rule.debit_only and not (debit > 0 and credit == 0): continue
-        if rule.credit_only and not (credit > 0 and debit == 0): continue
-        if rule.contains_any and not any(str(k).lower() in d for k in rule.contains_any): continue
-        if rule.regex_any and not any(re.search(rx, d) for rx in rule.regex_any): continue
-        return {"matched": True, "rule": rule.to_dict()}
+    for rule in sorted(_load_rdr(), key=lambda r: int(r.get("priority", 0) or 0), reverse=True):
+        cond = rule.get("if", {}) or {}
+        if "debit_gt"     in cond and not debit  > float(cond["debit_gt"]):  continue
+        if "credit_gt"    in cond and not credit > float(cond["credit_gt"]): continue
+        if "debit_only"   in cond and cond["debit_only"]  and not (debit > 0 and credit == 0): continue
+        if "credit_only"  in cond and cond["credit_only"] and not (credit > 0 and debit == 0): continue
+        if "contains_any" in cond and not any(str(k).lower() in d for k in cond["contains_any"]): continue
+        if "regex_any"    in cond and not any(re.search(rx, d) for rx in cond["regex_any"]): continue
+        return {"matched": True, "rule": rule}
     return {"matched": False, "rule": None}
 
 
@@ -2954,11 +2930,7 @@ def _resolve_path(raw: str) -> Path:
 
 @app.get("/filemanager/tree")
 def fm_tree():
-    """Return full recursive tree of DATA_ROOT for the file manager, plus a
-    synthetic 'Postgres Database' node exposing every real app table
-    (chart_of_accounts, pricing_plans, rdr_rules, groq_key_pool, etc.) --
-    same browsing/editing UI as any other file/table in this page, just
-    backed by the actual application database instead of a stray .db file."""
+    """Return full recursive tree of DATA_ROOT for the file manager."""
     def _walk(base: Path, rel: str) -> list:
         items = []
         try:
@@ -2987,28 +2959,10 @@ def fm_tree():
             pass
         return items
 
-    tree = []
-    try:
-        from sqlalchemy import inspect as _sa_inspect
-        from db_app.database import engine as _pg_engine
-        from db_app.known_tables import get_accfino_table_names
-        accfino_tables = get_accfino_table_names()
-        pg_tables = sorted(t for t in _sa_inspect(_pg_engine).get_table_names() if t in accfino_tables)
-        tree.append({
-            "name": "Postgres Database",
-            "path": "__postgres_db__",
-            "type": "database",
-            "tables": pg_tables,
-        })
-    except Exception as _e:
-        logger.warning(f"filemanager: could not list Postgres tables: {_e}")
+    if not _DATA_ROOT.exists():
+        return {"tree": [], "data_root": str(_DATA_ROOT), "error": "DATA_ROOT does not exist"}
 
-    if _DATA_ROOT.exists():
-        tree.extend(_walk(_DATA_ROOT, ""))
-    else:
-        return {"tree": tree, "data_root": str(_DATA_ROOT), "error": "DATA_ROOT does not exist"}
-
-    return {"tree": tree, "data_root": str(_DATA_ROOT)}
+    return {"tree": _walk(_DATA_ROOT, ""), "data_root": str(_DATA_ROOT)}
 
 
 # -- Read ----------------------------------------------------------------------
@@ -3016,35 +2970,10 @@ def fm_tree():
 @app.get("/filemanager/read/{file_path:path}")
 def fm_read(file_path: str, table: str = ""):
     """
-    Read a file, SQLite table, or Postgres table and return {columns, rows, source}.
-    file_path is a URL-encoded, forward-slash relative path from DATA_ROOT,
-    EXCEPT for the sentinel "__postgres_db__" which reads from the real
-    application database instead of a file on disk.
+    Read a file or SQLite table and return {columns, rows, source}.
+    file_path is a URL-encoded, forward-slash relative path from DATA_ROOT.
     All returned values are plain JSON-safe strings.
     """
-    if file_path == "__postgres_db__":
-        if not table:
-            raise HTTPException(400, "table is required to read from the Postgres database")
-        from db_app.known_tables import get_accfino_table_names
-        if table not in get_accfino_table_names():
-            raise HTTPException(404, f"Table {table!r} does not exist")
-        from sqlalchemy import text as _sa_text, inspect as _sa_inspect
-        from db_app.database import SessionLocal as _PgSession, engine as _pg_engine
-        insp = _sa_inspect(_pg_engine)
-        if not insp.has_table(table):
-            raise HTTPException(404, f"Table {table!r} does not exist in Postgres")
-        db = _PgSession()
-        try:
-            result = db.execute(_sa_text(f'SELECT * FROM "{table}" LIMIT 1000'))
-            cols = list(result.keys())
-            raw  = [dict(zip(cols, row)) for row in result.fetchall()]
-            return {"columns": cols, "rows": _safe_rows(raw, cols),
-                    "source": f"postgres - {len(raw)} rows"}
-        except Exception as e:
-            raise HTTPException(500, f"Postgres read error: {e}")
-        finally:
-            db.close()
-
     target = _resolve_path(file_path)
 
     if not target.exists():
@@ -3258,62 +3187,11 @@ except Exception as e:
 
 @app.post("/filemanager/save")
 def fm_save(body: dict = Body(...)):
-    """Save edited rows back to a CSV file, SQLite table, or Postgres table."""
+    """Save edited rows back to a CSV file or SQLite table."""
     path   = body.get("path",   "")
     table  = body.get("table",  "")
     rows   = body.get("rows",   [])
     source = body.get("source", "")
-
-    if path == "__postgres_db__":
-        if not table:
-            raise HTTPException(400, "table is required to save to the Postgres database")
-        from db_app.known_tables import get_accfino_table_names
-        if table not in get_accfino_table_names():
-            raise HTTPException(404, f"Table {table!r} does not exist")
-        # Deliberately NOT a delete-all-then-reinsert like the SQLite path
-        # below -- a Postgres table can hold far more rows than the 1000-row
-        # page currently loaded in the browser, so wholesale replace here
-        # would silently destroy every row outside the current view.
-        # Instead: upsert each row by its real primary key; use the
-        # per-row Delete button (fm_delete_row) to remove rows.
-        from sqlalchemy import text as _sa_text, inspect as _sa_inspect
-        from db_app.database import SessionLocal as _PgSession, engine as _pg_engine
-        insp = _sa_inspect(_pg_engine)
-        if not insp.has_table(table):
-            raise HTTPException(404, f"Table {table!r} does not exist in Postgres")
-        pk = insp.get_pk_constraint(table).get("constrained_columns") or []
-        if not pk:
-            raise HTTPException(400, f"Table {table!r} has no primary key -- cannot save generically")
-        pk_col = pk[0]
-
-        db = _PgSession()
-        try:
-            saved = 0
-            for row in rows:
-                if pk_col not in row or row[pk_col] in (None, ""):
-                    continue  # skip incomplete rows rather than guessing a PK
-                cols = [c for c in row.keys() if c != pk_col]
-                if not cols:
-                    continue
-                set_clause = ", ".join(f'"{c}" = :{c}' for c in cols)
-                params = {c: row[c] for c in cols}
-                params["_pk"] = row[pk_col]
-                result = db.execute(_sa_text(f'UPDATE "{table}" SET {set_clause} WHERE "{pk_col}" = :_pk'), params)
-                if result.rowcount == 0:
-                    # Row doesn't exist yet -- insert it (covers rows added via "Add Row")
-                    all_cols = [pk_col] + cols
-                    col_list = ", ".join(f'"{c}"' for c in all_cols)
-                    val_list = ", ".join(f':{c}' for c in all_cols)
-                    insert_params = {c: row.get(c) for c in all_cols}
-                    db.execute(_sa_text(f'INSERT INTO "{table}" ({col_list}) VALUES ({val_list})'), insert_params)
-                saved += 1
-            db.commit()
-            return {"ok": True, "saved": saved}
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(500, f"Postgres save error: {e}")
-        finally:
-            db.close()
 
     target = _resolve_path(path)
 
@@ -3362,44 +3240,16 @@ def fm_save(body: dict = Body(...)):
 
 @app.delete("/filemanager/delete-row")
 def fm_delete_row(body: dict = Body(...)):
-    """Delete a single row from a SQLite table, or a Postgres table, by primary key."""
+    """Delete a single row from a SQLite table by primary key."""
     path   = body.get("path",   "")
     table  = body.get("table",  "")
     row_id = body.get("row_id")
     pk_col = body.get("pk_col", "id")
 
+    target = _resolve_path(path)
+
     if not table:
         raise HTTPException(400, "table is required for row delete")
-
-    if path == "__postgres_db__":
-        from db_app.known_tables import get_accfino_table_names
-        if table not in get_accfino_table_names():
-            raise HTTPException(404, f"Table {table!r} does not exist")
-        from sqlalchemy import text as _sa_text, inspect as _sa_inspect
-        from db_app.database import SessionLocal as _PgSession, engine as _pg_engine
-        insp = _sa_inspect(_pg_engine)
-        if not insp.has_table(table):
-            raise HTTPException(404, f"Table {table!r} does not exist in Postgres")
-        # Trust the real PK column from the DB over whatever the frontend
-        # guessed (it defaults to "id" or the first column when it can't tell).
-        pk = insp.get_pk_constraint(table).get("constrained_columns") or []
-        real_pk_col = pk[0] if pk else pk_col
-        db = _PgSession()
-        try:
-            result = db.execute(_sa_text(f'DELETE FROM "{table}" WHERE "{real_pk_col}" = :id'), {"id": row_id})
-            db.commit()
-            if result.rowcount == 0:
-                raise HTTPException(404, "Row not found")
-            return {"ok": True}
-        except HTTPException:
-            raise
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(500, f"Postgres delete error: {e}")
-        finally:
-            db.close()
-
-    target = _resolve_path(path)
     try:
         cx = _sqlite3.connect(str(target))
         cx.execute(f'DELETE FROM "{table}" WHERE "{pk_col}" = ?', (row_id,))
@@ -3599,26 +3449,30 @@ def licence_update_user(user_id: int, body: dict = Body(...)):
         db.close()
 
 # ------------------------------------------------------------------------------
-# PRICING MANAGEMENT - Postgres-backed (pricing_plans table, see
-# db_app/models/app_data.py PricingPlan). Falls back to payments.py's PLANS
-# (which itself falls back further to pricing.json then hardcoded defaults)
-# only if the DB is unreachable -- matches the pattern used everywhere else.
+# PRICING MANAGEMENT - admin editable pricing from JSON file
 # ------------------------------------------------------------------------------
+# Try multiple candidate paths - robust for local, Docker and Northflank layouts
+_PRICING_CANDIDATES = [
+    Path(__file__).parent / "data" / "pricing.json",   # main_app/data/ (normal)
+    Path("/app/main_app/data/pricing.json"),            # Docker /app layout
+]
+
+def _find_pricing():
+    for p in _PRICING_CANDIDATES:
+        if p.exists():
+            return p
+    return None
+
+_PRICING_FILE = _find_pricing() or Path(__file__).parent / "data" / "pricing.json"
+
 def _load_pricing() -> dict:
-    """Load pricing -- Postgres is authoritative."""
-    try:
-        from db_app.database import SessionLocal
-        from db_app.models.app_data import PricingPlan
-        db = SessionLocal()
+    """Load pricing from JSON file - single source of truth for all plan data."""
+    if _PRICING_FILE.exists():
         try:
-            rows = db.query(PricingPlan).order_by(PricingPlan.sort_order).all()
-            if rows:
-                return {r.slug: r.to_dict() for r in rows}
-        finally:
-            db.close()
-    except Exception:
-        pass
-    # Fallback to payments.py PLANS (JSON file / hardcoded, in that order)
+            return json.loads(_PRICING_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    # Fallback to payments.py PLANS
     try:
         from db_app.api.payments import PLANS
         return PLANS
@@ -3626,38 +3480,12 @@ def _load_pricing() -> dict:
         return {}
 
 def _save_pricing(data: dict):
-    """Admin - replace the full pricing config. Upserts every plan slug
-    in `data` into the pricing_plans table's real columns; slugs no
-    longer present in `data` are left alone (matches the old file's
-    "whole document" replace semantics closely enough without deleting
-    plans an admin didn't intend to touch in an unrelated partial
-    payload)."""
-    from db_app.database import SessionLocal
-    from db_app.models.app_data import PricingPlan
-    db = SessionLocal()
-    try:
-        for i, (slug, plan) in enumerate(data.items()):
-            row = db.get(PricingPlan, slug)
-            if not row:
-                row = PricingPlan(slug=slug, sort_order=i)
-                db.add(row)
-            row.name = plan.get("name")
-            row.description = plan.get("description")
-            row.price_monthly = plan.get("price_monthly", 0)
-            row.price_yearly = plan.get("price_yearly", 0)
-            row.badge = plan.get("badge")
-            row.highlight = bool(plan.get("highlight", False))
-            row.category = plan.get("category")
-            row.features = plan.get("features", [])
-            row.modules = plan.get("modules", [])
-            row.price_effective_from = plan.get("price_effective_from")
-        db.commit()
-    finally:
-        db.close()
+    _PRICING_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _PRICING_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 @app.get("/payments/plans")
 def payments_get_plans():
-    """Alias of /pricing/plans - kept for backward compatibility."""
+    """Alias of /pricing/plans - kept for backward compatibility. Single source: pricing.json."""
     return _load_pricing()
 
 
@@ -3674,23 +3502,13 @@ def pricing_save(body: dict = Body(...)):
 
 @app.patch("/pricing/plans/{plan_id}")
 def pricing_update_plan(plan_id: str, body: dict = Body(...)):
-    """Admin - update a single plan's pricing fields (partial update --
-    only fields present in body are changed)."""
-    from db_app.database import SessionLocal
-    from db_app.models.app_data import PricingPlan
-    db = SessionLocal()
-    try:
-        row = db.get(PricingPlan, plan_id)
-        if not row:
-            raise HTTPException(404, f"Plan {plan_id!r} not found")
-        for field in ("name", "description", "price_monthly", "price_yearly", "badge",
-                      "highlight", "category", "features", "modules", "price_effective_from"):
-            if field in body:
-                setattr(row, field, body[field])
-        db.commit()
-        return {"ok": True, "plan": row.to_dict()}
-    finally:
-        db.close()
+    """Admin - update a single plan's pricing fields."""
+    data = _load_pricing()
+    if plan_id not in data:
+        raise HTTPException(404, f"Plan {plan_id!r} not found")
+    data[plan_id].update(body)
+    _save_pricing(data)
+    return {"ok": True, "plan": data[plan_id]}
 
 # -- Strip /api prefix middleware ----------------------------------------------
 # In production the React frontend calls /api/banks, /api/sessions etc.
@@ -3732,8 +3550,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses   import FileResponse as _FileResponse
 
 _ROOT       = Path(__file__).parent.parent          # project root
-_DIST       = _ROOT / "frontend" / "dist"
-_PUBLIC     = _ROOT / "frontend" / "public"   # Vite public folder (dev mode)
+_DIST       = _ROOT / "react_frontend" / "dist"
+_PUBLIC     = _ROOT / "react_frontend" / "public"   # Vite public folder (dev mode)
 
 # Marketing page: prefer built dist/, fall back to source public/ (local dev)
 _MARKETING  = _DIST / "index-marketing.html" if (_DIST / "index-marketing.html").exists()               else _PUBLIC / "index-marketing.html"
@@ -3752,7 +3570,7 @@ def _serve_marketing():
     bundle vs module card layout stays correct when pricing.json changes.
     """
     if not _MARKETING.exists():
-        return {"error": "Marketing page not found. Check frontend/public/index-marketing.html"}
+        return {"error": "Marketing page not found. Check react_frontend/public/index-marketing.html"}
     import json as _json_mkt, re as _re_mkt
     from fastapi.responses import HTMLResponse as _HTMLResponse
     html = _MARKETING.read_text(encoding="utf-8")
@@ -3795,7 +3613,7 @@ def _serve_app() -> _FileResponse:
     """Return the React SPA shell (only available after npm run build)."""
     if _APP_INDEX.exists():
         return _FileResponse(str(_APP_INDEX))
-    return {"error": "React app not built. Run: cd frontend && npm run build"}
+    return {"error": "React app not built. Run: cd react_frontend && npm run build"}
 
 
 # -- Marketing page - served at /index-marketing.html -------------------------
@@ -3805,15 +3623,6 @@ def _serve_app() -> _FileResponse:
 @app.get("/index-marketing.html", include_in_schema=False)
 def marketing_html():
     return _serve_marketing()
-
-# -- Brand logo - served at /accfino-logo.png ----------------------------------
-@app.get("/accfino-logo.png", include_in_schema=False)
-def brand_logo():
-    for base in (_DIST, _PUBLIC):
-        f = base / "accfino-logo.png"
-        if f.is_file():
-            return _FileResponse(str(f), media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
-    raise HTTPException(404, "Not found")
 
 # -- Static assets (only available in production after npm run build) ----------
 if _DIST.exists() and (_DIST / "assets").exists():
