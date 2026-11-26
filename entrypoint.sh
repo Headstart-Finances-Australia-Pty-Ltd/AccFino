@@ -79,11 +79,16 @@ if [ -n "$OTEL_EXPORTER_OTLP_ENDPOINT" ] && command -v opentelemetry-instrument 
     export OTEL_LOGS_EXPORTER=none
     export OTEL_PYTHON_FASTAPI_EXCLUDED_URLS="${OTEL_PYTHON_FASTAPI_EXCLUDED_URLS:-ready,health,healthz,assets/,static/,favicon,\.js$,\.css$,\.png$,\.svg$,\.ico$,\.woff2?$}"
     export OTEL_PYTHON_REQUESTS_EXCLUDED_URLS="${OTEL_PYTHON_REQUESTS_EXCLUDED_URLS:-monitor.prama-ai.workers.dev}"
-    export OTEL_TRACES_SAMPLER="${OTEL_TRACES_SAMPLER:-parentbased_traceidratio}"
+    # Not "parentbased": a proxy in front of the app (e.g. Northflank's load balancer) can add an
+    # unsampled trace header to each request, which would make a parent-based sampler drop them all.
+    export OTEL_TRACES_SAMPLER="${OTEL_TRACES_SAMPLER:-traceidratio}"
     export OTEL_TRACES_SAMPLER_ARG="${OTEL_TRACES_SAMPLER_ARG:-1.0}"
     export OTEL_RESOURCE_ATTRIBUTES="${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=production}"
     OTEL_WRAP="opentelemetry-instrument"
     echo "[accfino] Prama Monitor tracing on (service ${OTEL_SERVICE_NAME})"
+    # The app prints one "Prama Monitor check" line after start-up (see main_app/prama_monitor.py).
+else
+    echo "[accfino] Prama Monitor tracing off (OTEL_EXPORTER_OTLP_ENDPOINT not set or OpenTelemetry not installed)"
 fi
 
 exec env ACCFINO_APP_NAME=accfino-api $OTEL_WRAP python -m uvicorn main_app.react_api:app \

@@ -89,3 +89,29 @@ def report_anthropic(resp, started_at=None, operation="chat"):
                         duration_ms=duration, operation=operation)
     except Exception:
         pass
+
+
+def log_tracing_status(app=None):
+    """Prints one line in the logs saying whether request tracing works, and sends a test
+    trace to Prama Monitor so problems (wrong token, wrong address) show up straight away."""
+    def _check():
+        try:
+            if not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+                print("[accfino] Prama Monitor check: tracing off (OTEL_EXPORTER_OTLP_ENDPOINT not set)")
+                return
+            from opentelemetry import trace
+            active = hasattr(trace.get_tracer_provider(), "force_flush")
+            instrumented = app is None or "Instrumented" in type(app).__name__
+            from opentelemetry.sdk.resources import Resource
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            from opentelemetry.sdk.trace.export import SpanExportResult
+            span = TracerProvider(resource=Resource.create()).get_tracer("accfino.startup").start_span("prama-monitor startup check")
+            span.end()
+            result = OTLPSpanExporter().export([span])
+            sent = "OK" if result == SpanExportResult.SUCCESS else "FAILED (see the error above: check the token and address)"
+            print(f"[accfino] Prama Monitor check: tracing in app {'ON' if active else 'OFF'}, "
+                  f"FastAPI instrumented {'YES' if instrumented else 'NO'}, test trace sent {sent}")
+        except Exception as e:
+            print(f"[accfino] Prama Monitor check failed: {e}")
+    threading.Thread(target=_check, daemon=True).start()

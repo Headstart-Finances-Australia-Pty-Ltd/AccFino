@@ -199,6 +199,13 @@ except Exception:
 
 app = FastAPI(title="Accfino API", version="2.0")
 
+# Prama Monitor: logs whether request tracing works (one line at startup, never fails the app)
+try:
+    from main_app.prama_monitor import log_tracing_status
+    log_tracing_status(app)
+except Exception:
+    pass
+
 # Startup readiness flag - set to True after all heavy modules are loaded.
 # The /ready endpoint returns 503 until this is True so Northflank's
 # load balancer doesn't route traffic before the app is initialised.
