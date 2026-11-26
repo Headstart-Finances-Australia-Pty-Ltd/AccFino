@@ -110,8 +110,17 @@ def log_tracing_status(app=None):
             span.end()
             result = OTLPSpanExporter().export([span])
             sent = "OK" if result == SpanExportResult.SUCCESS else "FAILED (see the error above: check the token and address)"
+            # AI usage address and token (an empty list is refused with 400 when the token is right).
+            url, token = _settings()
+            ai = "not set up"
+            if url and token:
+                try:
+                    code = requests.post(url, json=[], timeout=10, headers={"Authorization": f"Bearer {token}"}).status_code
+                    ai = "OK" if code == 400 else f"FAILED (HTTP {code})"
+                except Exception as e:
+                    ai = f"FAILED ({e})"
             print(f"[accfino] Prama Monitor check: tracing in app {'ON' if active else 'OFF'}, "
-                  f"FastAPI instrumented {'YES' if instrumented else 'NO'}, test trace sent {sent}")
+                  f"FastAPI instrumented {'YES' if instrumented else 'NO'}, test trace sent {sent}, AI usage reporting {ai}")
         except Exception as e:
             print(f"[accfino] Prama Monitor check failed: {e}")
     threading.Thread(target=_check, daemon=True).start()
