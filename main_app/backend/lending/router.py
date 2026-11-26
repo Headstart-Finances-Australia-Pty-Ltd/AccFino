@@ -69,6 +69,9 @@ async def _extract_one(file: UploadFile) -> dict:
                 transactions = extract_from_pdf_bytes_generic(raw)
                 method = "pdf_generic"
 
+            print(f"[accfino] statement {fname}: built-in readers found {len(transactions)} rows "
+                  f"(bank={meta.get('bank', '?') if isinstance(meta, dict) else '?'})", flush=True)
+
             # 3. Fallback: Claude Vision (for scanned PDFs)
             if len(transactions) < 3:
                 transactions = await extract_from_image_via_claude(raw, "application/pdf")

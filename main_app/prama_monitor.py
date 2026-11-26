@@ -22,6 +22,10 @@ _PRICES = {
     "claude-opus": (15.0, 75.0),
     "claude-sonnet": (3.0, 15.0),
     "claude-haiku": (0.8, 4.0),
+    # Groq (USD per million tokens, console.groq.com/docs/models)
+    "openai/gpt-oss-120b": (0.15, 0.60),
+    "openai/gpt-oss-20b": (0.075, 0.30),
+    "qwen/qwen3.8-27b": (0.80, 4.00),
 }
 
 
@@ -77,6 +81,18 @@ def report_ai_usage(provider, model, input_tokens, output_tokens, duration_ms=No
         "duration_ms": duration_ms, "trace_id": _trace_id(),
     }
     threading.Thread(target=_send, args=(url, token, event), daemon=True).start()
+
+
+def report_openai_style(provider, data, started_at=None, operation="chat"):
+    """For OpenAI-compatible replies (Groq etc.): `data` is the parsed JSON response."""
+    try:
+        usage = (data or {}).get("usage") or {}
+        duration = int((time.time() - started_at) * 1000) if started_at else None
+        report_ai_usage(provider, data.get("model", "unknown"),
+                        usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0),
+                        duration_ms=duration, operation=operation)
+    except Exception:
+        pass
 
 
 def report_anthropic(resp, started_at=None, operation="chat"):

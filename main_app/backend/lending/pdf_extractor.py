@@ -177,18 +177,46 @@ def _parse_text_line(line: str) -> Optional[Dict]:
             "credit": vals[0] if is_cr and vals else 0.0}
 
 
+def _json_array_from(text: str):
+    """Pull the JSON array out of Claude's reply, even with extra words around it
+    or when the reply was cut off part-way (keeps every complete row)."""
+    text = re.sub(r"```(?:json)?", "", text or "")
+    start = text.find("[")
+    if start < 0:
+        raise ValueError(f"no JSON list in reply: {text[:200]!r}")
+    end = text.rfind("]")
+    if end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except ValueError:
+            pass
+    body = text[start:]
+    cut = body.rfind("}")
+    while cut > 0:
+        try:
+            return json.loads(body[:cut + 1] + "]")
+        except ValueError:
+            cut = body.rfind("}", 0, cut)
+    raise ValueError(f"reply was not a JSON list: {text[:200]!r}")
+
+
 # ── Claude Vision extraction ───────────────────────────────────────────────────
 async def extract_from_image_via_claude(
     image_bytes: bytes,
     media_type:  str = "image/jpeg",
     api_key:     str = "",
 ) -> List[Dict]:
-    """Use Claude vision to extract transactions from an image or scanned PDF page."""
+    """Extract transactions from an image or a PDF the built-in readers could not handle.
+    Uses Groq when GROQ_API_KEY is set, otherwise Claude (ANTHROPIC_API_KEY)."""
+    groq_key = (os.environ.get("GROQ_API_KEY") or "").strip()
+    if groq_key and not api_key:
+        return _extract_via_groq(image_bytes, media_type, groq_key)
     try:
         import anthropic
-        key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        key = (api_key or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CLAUDE_API_KEY")
+               or os.environ.get("ANTHROPIC_KEY") or "").strip()
         if not key:
-            print("[accfino] Claude statement extraction skipped: ANTHROPIC_API_KEY is not set", flush=True)
+            print("[accfino] AI statement extraction skipped: neither GROQ_API_KEY nor ANTHROPIC_API_KEY is set", flush=True)
             return []
         client = anthropic.Anthropic(api_key=key)
         b64 = base64.b64encode(image_bytes).decode()
@@ -222,8 +250,11 @@ async def extract_from_image_via_claude(
             report_anthropic(resp, started_at=_started, operation="bank-statement-vision")
         except Exception:
             pass
-        text = re.sub(r"```json\s*|\s*```", "", resp.content[0].text).strip()
-        data = json.loads(text)
+        text = "".join(getattr(b, "text", "") for b in resp.content
+                       if getattr(b, "type", "text") == "text")
+        print(f"[accfino] Claude statement extraction: stop={getattr(resp, 'stop_reason', '?')} "
+              f"chars={len(text)}", flush=True)
+        data = _json_array_from(text)
         if isinstance(data, list):
             return [{"date": t.get("date",""), "description": t.get("description",""),
                      "debit": float(t.get("debit") or 0),
@@ -231,6 +262,104 @@ async def extract_from_image_via_claude(
                     for t in data if t.get("description")]
     except Exception as e:
         print(f"[accfino] Claude statement extraction failed: {type(e).__name__}: {e}", flush=True)
+    return []
+
+
+# ── Groq extraction ────────────────────────────────────────────────────────────
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+_PROMPT = (
+    "Extract ALL bank transactions from this bank statement. "
+    "Return ONLY a JSON array — no other text, no markdown. "
+    "Each object: {\"date\":\"YYYY-MM-DD\",\"description\":\"string\","
+    "\"debit\":number_or_0,\"credit\":number_or_0}. "
+    "Debits are money going OUT, credits are money coming IN. "
+    "Include every row — salary, rent, groceries, ATM withdrawals, etc. "
+    "Skip opening/closing balance lines and page headers."
+)
+
+
+def _pdf_text(pdf_bytes: bytes) -> str:
+    if not _PDFPLUMBER:
+        return ""
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            return "\n\n".join((pg.extract_text(layout=True) or "") for pg in pdf.pages)
+    except Exception:
+        return ""
+
+
+def _pdf_page_images(pdf_bytes: bytes, limit: int = 3) -> List[bytes]:
+    try:
+        from pdf2image import convert_from_bytes
+        pages = convert_from_bytes(pdf_bytes, dpi=150, first_page=1, last_page=limit)
+        out = []
+        for pg in pages:
+            buf = io.BytesIO()
+            pg.convert("RGB").save(buf, format="JPEG", quality=85)
+            out.append(buf.getvalue())
+        return out
+    except Exception as e:
+        print(f"[accfino] could not turn PDF pages into images: {e}", flush=True)
+        return []
+
+
+def _groq_call(key: str, model: str, content, operation: str) -> List[Dict]:
+    import requests
+    started = time.time()
+    r = requests.post(GROQ_URL, timeout=120,
+                      headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                      json={"model": model, "temperature": 0, "max_completion_tokens": 16000,
+                            "messages": [{"role": "user", "content": content}]})
+    if r.status_code != 200:
+        raise RuntimeError(f"Groq HTTP {r.status_code}: {r.text[:300]}")
+    data = r.json()
+    try:
+        from main_app.prama_monitor import report_openai_style
+        report_openai_style("groq", data, started_at=started, operation=operation)
+    except Exception:
+        pass
+    choice = (data.get("choices") or [{}])[0]
+    text = (choice.get("message") or {}).get("content") or ""
+    print(f"[accfino] Groq statement extraction: model={model} "
+          f"finish={choice.get('finish_reason', '?')} chars={len(text)}", flush=True)
+    return _json_array_from(text)
+
+
+def _extract_via_groq(file_bytes: bytes, media_type: str, key: str) -> List[Dict]:
+    text_model = os.environ.get("GROQ_TEXT_MODEL", "openai/gpt-oss-120b")
+    vision_model = os.environ.get("GROQ_VISION_MODEL", "qwen/qwen3.8-27b")
+    try:
+        is_pdf = media_type == "application/pdf" or file_bytes[:5] == b"%PDF-"
+        if is_pdf:
+            text = _pdf_text(file_bytes)
+            if len(text.strip()) > 200:
+                # PDF with real text: send the text (cheaper and more accurate than pictures)
+                data = _groq_call(key, text_model,
+                                  _PROMPT + "\n\nSTATEMENT TEXT:\n" + text[:300000],
+                                  "bank-statement-text")
+            else:
+                # Scanned PDF: send the first pages as pictures (Groq allows 3 per request)
+                imgs = _pdf_page_images(file_bytes, 3)
+                if not imgs:
+                    return []
+                parts = [{"type": "text", "text": _PROMPT}] + [
+                    {"type": "image_url", "image_url": {
+                        "url": "data:image/jpeg;base64," + base64.b64encode(b).decode()}}
+                    for b in imgs]
+                data = _groq_call(key, vision_model, parts, "bank-statement-vision")
+        else:
+            parts = [{"type": "text", "text": _PROMPT},
+                     {"type": "image_url", "image_url": {
+                         "url": f"data:{media_type or 'image/jpeg'};base64,"
+                                + base64.b64encode(file_bytes).decode()}}]
+            data = _groq_call(key, vision_model, parts, "bank-statement-vision")
+        if isinstance(data, list):
+            return [{"date": t.get("date", ""), "description": t.get("description", ""),
+                     "debit": float(t.get("debit") or 0),
+                     "credit": float(t.get("credit") or 0)}
+                    for t in data if isinstance(t, dict) and t.get("description")]
+    except Exception as e:
+        print(f"[accfino] Groq statement extraction failed: {type(e).__name__}: {e}", flush=True)
     return []
 
 
