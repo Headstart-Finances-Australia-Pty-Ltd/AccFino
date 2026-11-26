@@ -71,7 +71,7 @@ async def _extract_one(file: UploadFile) -> dict:
 
             # 3. Fallback: Claude Vision (for scanned PDFs)
             if len(transactions) < 3:
-                transactions = await extract_from_image_via_claude(raw, "image/jpeg")
+                transactions = await extract_from_image_via_claude(raw, "application/pdf")
                 method = "pdf_vision"
 
         elif ctype.startswith("image/") or flower.endswith((".jpg",".jpeg",".png",".webp")):

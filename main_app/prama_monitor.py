@@ -58,7 +58,9 @@ def _trace_id():
 
 def _send(url, token, event):
     try:
-        requests.post(url, json=event, timeout=5, headers={"Authorization": f"Bearer {token}"})
+        r = requests.post(url, json=event, timeout=5, headers={"Authorization": f"Bearer {token}"})
+        print(f"[accfino] Prama AI usage sent: {event.get('model')} "
+              f"{event.get('input_tokens')} in / {event.get('output_tokens')} out tokens -> HTTP {r.status_code}", flush=True)
     except Exception as e:  # never break the app
         print(f"[accfino] Prama AI usage report failed: {e}")
 
@@ -110,13 +112,13 @@ def log_tracing_status(app=None):
             span.end()
             result = OTLPSpanExporter().export([span])
             sent = "OK" if result == SpanExportResult.SUCCESS else "FAILED (see the error above: check the token and address)"
-            # AI usage address and token (an empty list is refused with 400 when the token is right).
+            # AI usage address and token (an empty list is a connection test: 400 "nothing to save" when the token is right).
             url, token = _settings()
             ai = "not set up"
             if url and token:
                 try:
                     code = requests.post(url, json=[], timeout=10, headers={"Authorization": f"Bearer {token}"}).status_code
-                    ai = "OK" if code == 400 else f"FAILED (HTTP {code})"
+                    ai = "OK" if code in (200, 400) else f"FAILED (HTTP {code})"
                 except Exception as e:
                     ai = f"FAILED ({e})"
             print(f"[accfino] Prama Monitor check: tracing in app {'ON' if active else 'OFF'}, "

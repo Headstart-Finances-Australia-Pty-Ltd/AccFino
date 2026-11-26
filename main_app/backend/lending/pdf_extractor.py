@@ -186,16 +186,26 @@ async def extract_from_image_via_claude(
     """Use Claude vision to extract transactions from an image or scanned PDF page."""
     try:
         import anthropic
-        client = anthropic.Anthropic(
-            api_key=api_key or os.environ.get("ANTHROPIC_API_KEY", ""))
+        key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        if not key:
+            print("[accfino] Claude statement extraction skipped: ANTHROPIC_API_KEY is not set", flush=True)
+            return []
+        client = anthropic.Anthropic(api_key=key)
         b64 = base64.b64encode(image_bytes).decode()
+        # PDFs must be sent as a "document" block; sending them as an image fails
+        is_pdf = media_type == "application/pdf" or image_bytes[:5] == b"%PDF-"
+        if is_pdf:
+            file_block = {"type": "document",
+                          "source": {"type": "base64", "media_type": "application/pdf", "data": b64}}
+        else:
+            file_block = {"type": "image",
+                          "source": {"type": "base64", "media_type": media_type, "data": b64}}
         _started = time.time()
         resp = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=4096,
+            max_tokens=16000,
             messages=[{"role": "user", "content": [
-                {"type": "image",
-                 "source": {"type": "base64", "media_type": media_type, "data": b64}},
+                file_block,
                 {"type": "text", "text": (
                     "Extract ALL bank transactions from this bank statement. "
                     "Return ONLY a JSON array — no other text, no markdown. "
@@ -219,8 +229,8 @@ async def extract_from_image_via_claude(
                      "debit": float(t.get("debit") or 0),
                      "credit": float(t.get("credit") or 0)}
                     for t in data if t.get("description")]
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[accfino] Claude statement extraction failed: {type(e).__name__}: {e}", flush=True)
     return []
 
 
