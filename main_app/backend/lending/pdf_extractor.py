@@ -13,6 +13,7 @@ Priority order:
   CSV  → csv.DictReader                            (direct)
 """
 import re
+import time
 import io
 import os
 import csv
@@ -188,6 +189,7 @@ async def extract_from_image_via_claude(
         client = anthropic.Anthropic(
             api_key=api_key or os.environ.get("ANTHROPIC_API_KEY", ""))
         b64 = base64.b64encode(image_bytes).decode()
+        _started = time.time()
         resp = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
@@ -204,6 +206,12 @@ async def extract_from_image_via_claude(
                 )},
             ]}],
         )
+        # Token usage for Prama Monitor (runs in the background, never raises)
+        try:
+            from main_app.prama_monitor import report_anthropic
+            report_anthropic(resp, started_at=_started, operation="bank-statement-vision")
+        except Exception:
+            pass
         text = re.sub(r"```json\s*|\s*```", "", resp.content[0].text).strip()
         data = json.loads(text)
         if isinstance(data, list):

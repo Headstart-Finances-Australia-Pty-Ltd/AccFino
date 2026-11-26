@@ -62,3 +62,9 @@ tzdata==2025.3
 urllib3==2.6.3
 uvicorn==0.42.0
 PyJWT>=2.8.0
+# Prama Monitor observability (OpenTelemetry traces sent to monitor.prama-ai.workers.dev)
+opentelemetry-distro==0.66b2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+opentelemetry-instrumentation-fastapi==0.66b2
+opentelemetry-instrumentation-requests==0.66b2
+opentelemetry-instrumentation-httpx==0.66b2

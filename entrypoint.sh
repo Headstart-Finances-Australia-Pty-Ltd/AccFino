@@ -63,7 +63,30 @@ APP_PORT=${PORT:-8001}
 echo "[accfino] Starting main API on 0.0.0.0:${APP_PORT}..."
 echo "[accfino] Note: ML models take 30-90s to load — /ready returns 503 until done"
 
-exec env ACCFINO_APP_NAME=accfino-api python -m uvicorn main_app.react_api:app \
+# ── Prama Monitor (OpenTelemetry) ────────────────────────────────────────────
+# Sends request traces to Prama Monitor when OTEL_EXPORTER_OTLP_ENDPOINT and
+# OTEL_EXPORTER_OTLP_HEADERS are set in Northflank. Without them the app starts as before.
+OTEL_WRAP=""
+if [ -n "$OTEL_EXPORTER_OTLP_ENDPOINT" ] && command -v opentelemetry-instrument >/dev/null 2>&1; then
+    export OTEL_SERVICE_NAME="${OTEL_SERVICE_NAME:-accfino-api}"
+    # Python only sends the binary format; Prama Monitor accepts it.
+    export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    export OTEL_EXPORTER_OTLP_COMPRESSION="${OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}"
+    export OTEL_TRACES_EXPORTER=otlp
+    # Keep within the free plan: no metric/log export (Northflank already provides CPU,
+    # memory and error logs), skip health checks and static files, sample busy traffic.
+    export OTEL_METRICS_EXPORTER=none
+    export OTEL_LOGS_EXPORTER=none
+    export OTEL_PYTHON_FASTAPI_EXCLUDED_URLS="${OTEL_PYTHON_FASTAPI_EXCLUDED_URLS:-ready,health,healthz,assets/,static/,favicon,\.js$,\.css$,\.png$,\.svg$,\.ico$,\.woff2?$}"
+    export OTEL_PYTHON_REQUESTS_EXCLUDED_URLS="${OTEL_PYTHON_REQUESTS_EXCLUDED_URLS:-monitor.prama-ai.workers.dev}"
+    export OTEL_TRACES_SAMPLER="${OTEL_TRACES_SAMPLER:-parentbased_traceidratio}"
+    export OTEL_TRACES_SAMPLER_ARG="${OTEL_TRACES_SAMPLER_ARG:-1.0}"
+    export OTEL_RESOURCE_ATTRIBUTES="${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=production}"
+    OTEL_WRAP="opentelemetry-instrument"
+    echo "[accfino] Prama Monitor tracing on (service ${OTEL_SERVICE_NAME})"
+fi
+
+exec env ACCFINO_APP_NAME=accfino-api $OTEL_WRAP python -m uvicorn main_app.react_api:app \
     --host 0.0.0.0 \
     --port "${APP_PORT}" \
     --workers 1 \
